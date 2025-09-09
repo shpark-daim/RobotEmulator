@@ -1,5 +1,5 @@
-﻿using Rcp;
-using MQTTnet;
+﻿using MQTTnet;
+using Rcp;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
@@ -76,20 +76,7 @@ public partial class MainWindow : Window {
     }
 
     private async void ReportStatus(object? state) {
-        if (_mqttClient?.IsConnected != true) return;
-
-        try {
-            if (DateTime.Now.Second % 2 == 0) {
-                var msg = new MqttApplicationMessageBuilder()
-                    .WithTopic(RCP.MakeStatusTopic(_robotId))
-                    .WithPayload(JsonSerializer.Serialize(_rcpStatus with { Sequence = _rcpStatus.Sequence + 1 }))
-                    .Build();
-
-                await _mqttClient.PublishAsync(msg);
-            }
-        } catch (Exception ex) {
-            Dispatcher.Invoke(() => AddLog($"상태 보고 오류: {ex.Message}"));
-        }
+        if (DateTime.Now.Second % 2 == 0) await SendStatus();
     }
 
     private async void ConnectButton_Click(object sender, RoutedEventArgs e) {
@@ -146,20 +133,18 @@ public partial class MainWindow : Window {
 
     private async Task HandleTransferCommand(RcpTransferCommand? transferCommand) {
         if (transferCommand != null && !string.IsNullOrEmpty(transferCommand.Source) && !string.IsNullOrEmpty(transferCommand.Dest)) {
-            (string from, string to) = Postioning(transferCommand);
+            (string from, string to) = Positioning(transferCommand);
             if (string.IsNullOrEmpty(from) || string.IsNullOrEmpty(to)) {
                 Dispatcher.Invoke(() => AddLog("알 수 없는 위치입니다. 명령을 무시합니다."));
-                return;
             } else {
                 Dispatcher.Invoke(() => AddLog($"이동 명령: {from} -> {to}"));
             }
             await Dispatcher.InvokeAsync(() => MoveRobot(from, to));
-        } else {
-            Dispatcher.Invoke(() => AddLog("잘못된 명령 형식입니다."));
-        }
+        } else { Dispatcher.Invoke(() => AddLog("잘못된 transfer 명령입니다. 명령을 무시합니다.")); }
     }
 
-    private static (string From, string To) Postioning(RcpTransferCommand cmd) {
+    #region transfer
+    private static (string From, string To) Positioning(RcpTransferCommand cmd) {
         var from = "";
         var to = "";
         if (cmd.Source == "s5") {
@@ -302,8 +287,7 @@ public partial class MainWindow : Window {
     }
 
     private async Task PickAnimation() {
-        await Dispatcher.InvokeAsync(async () =>
-        {
+        await Dispatcher.InvokeAsync(async () => {
             AddLog("물건 픽업 중...");
 
             // 1. Product가 아래로 내려가는 애니메이션 (집는 동작)
@@ -340,8 +324,7 @@ public partial class MainWindow : Window {
     }
 
     private async Task PlaceAnimation() {
-        await Dispatcher.InvokeAsync(async () =>
-        {
+        await Dispatcher.InvokeAsync(async () => {
             AddLog("물건 배치 중...");
 
             // 1. Product가 아래로 내려가는 애니메이션 (놓는 동작)
@@ -376,6 +359,7 @@ public partial class MainWindow : Window {
             await upTask.Task;
         });
     }
+    #endregion transfer
 
     private async Task SendStatus() {
         if (_mqttClient?.IsConnected != true) return;
