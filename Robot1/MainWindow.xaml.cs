@@ -24,6 +24,8 @@ public partial class MainWindow : Window {
     );
     // fixme : target (load robot from config)
     private const string _robotId = "r1";
+    private DateTime _lastStatusReportTime = DateTime.MinValue;
+    private readonly object _statusLock = new object();
 
     public MainWindow() {
         InitializeComponent();
@@ -61,10 +63,19 @@ public partial class MainWindow : Window {
     }
 
     private void StartStatusReporting() {
-        _statusReportTimer = new Timer(ReportStatus, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+        _statusReportTimer = new Timer(CheckAndReportStatus, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
         Dispatcher.Invoke(() => {
             AddLog("상태 보고 시작");
         });
+    }
+
+    private async void CheckAndReportStatus(object? state) {
+        lock (_statusLock) {
+            var timeSinceLastReport = DateTime.Now - _lastStatusReportTime;
+            if (timeSinceLastReport.TotalSeconds < 2) return;
+        }
+
+        await SendStatus();
     }
 
     private async Task StopStatusReporting() {
@@ -73,10 +84,6 @@ public partial class MainWindow : Window {
             _statusReportTimer = null;
             AddLog("상태 보고 중지");
         }
-    }
-
-    private async void ReportStatus(object? state) {
-        if (DateTime.Now.Second % 2 == 0) await SendStatus();
     }
 
     private async void ConnectButton_Click(object sender, RoutedEventArgs e) {
@@ -363,12 +370,16 @@ public partial class MainWindow : Window {
 
     private async Task SendStatus() {
         if (_mqttClient?.IsConnected != true) return;
+        // rcpStatus stale?
         var msg = new MqttApplicationMessageBuilder()
                     .WithTopic(RCP.MakeStatusTopic(_robotId))
                     .WithPayload(JsonSerializer.Serialize(_rcpStatus))
                     .Build();
 
         await _mqttClient.PublishAsync(msg);
+        lock (_statusLock) {
+            _lastStatusReportTime = DateTime.Now;
+        }
         _rcpStatus = _rcpStatus with { Sequence = _rcpStatus.Sequence + 1 };
     }
 
