@@ -44,26 +44,24 @@
             <TextBlock Canvas.Left="335" Canvas.Bottom="10" Text="S4" FontWeight="Bold" FontSize="14"/>
 
             <!-- 로봇 (이동할 객체) - 시작 위치: 중앙 -->
-            <Canvas Name="Product" Canvas.Left="240" Canvas.Top="50">
+            <Canvas Name="Product" Canvas.Left="160" Canvas.Top="10">
                 <!-- 메인 박스 면 -->
                 <Rectangle Width="20" Height="20" 
                            Fill="SandyBrown" 
                            Stroke="SaddleBrown"
                            StrokeThickness="1"/>
-
                 <!-- 상단 면 (3D 효과) -->
                 <Polygon Fill="BurlyWood"
                          Stroke="SaddleBrown"
                          StrokeThickness="1"
                          Points="0,0 5,-3 25,-3 20,0"/>
-
                 <!-- 오른쪽 면 (3D 효과) -->
                 <Polygon Fill="Tan"
-                     Stroke="SaddleBrown" 
-                     StrokeThickness="1"
-                     Points="20,0 25,-3 25,17 20,20"/>
+                         Stroke="SaddleBrown" 
+                         StrokeThickness="1"
+                         Points="20,0 25,-3 25,17 20,20"/>
             </Canvas>
-            <TextBlock Name="ProductLabel" Canvas.Left="270" Canvas.Top="50" Text="Product" FontSize="10" FontWeight="Bold"/>
+            <TextBlock Name="ProductLabel" Canvas.Left="190" Canvas.Top="10" Text="Product" FontSize="10" FontWeight="Bold"/>
         </Canvas>
 
         <!-- 하단 로그 -->
