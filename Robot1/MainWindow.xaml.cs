@@ -123,8 +123,28 @@ public partial class MainWindow : Window {
         var message = Encoding.UTF8.GetString(e.ApplicationMessage.Payload);
 
         Dispatcher.Invoke(() => AddLog($"명령 수신 : {_seq++}"));
-        var transferCommand = JsonSerializer.Deserialize<RcpTransferCommand>(message);
+        var topic = e.ApplicationMessage.Topic;
 
+        if (topic.Contains("/cmd/sync")) {
+            var syncCommand = JsonSerializer.Deserialize<RcpSyncCommand>(message);
+            await HandleSyncCommand(syncCommand);
+        } else if (topic.Contains("/cmd/transfer")) {
+            var transferCommand = JsonSerializer.Deserialize<RcpTransferCommand>(message);
+            await HandleTransferCommand(transferCommand);
+        }
+    }
+
+    private async Task HandleSyncCommand(RcpSyncCommand? cmd) {
+        if (cmd is { }) {
+            await Dispatcher.InvokeAsync(() => AddLog($"Sync 명령 처리: Id={cmd.Id}, Sequence={cmd.Sequence}"));
+            if (cmd.Sequence > _rcpStatus.Sequence) {
+                _rcpStatus = _rcpStatus with { Sequence = cmd.Sequence - 1 };
+            }
+            await SendStatus();
+        }
+    }
+
+    private async Task HandleTransferCommand(RcpTransferCommand? transferCommand) {
         if (transferCommand != null && !string.IsNullOrEmpty(transferCommand.Source) && !string.IsNullOrEmpty(transferCommand.Dest)) {
             (string from, string to) = Postioning(transferCommand);
             if (string.IsNullOrEmpty(from) || string.IsNullOrEmpty(to)) {
@@ -355,6 +375,17 @@ public partial class MainWindow : Window {
             Product.BeginAnimation(Canvas.TopProperty, upAnimation);
             await upTask.Task;
         });
+    }
+
+    private async Task SendStatus() {
+        if (_mqttClient?.IsConnected != true) return;
+        var msg = new MqttApplicationMessageBuilder()
+                    .WithTopic(RCP.MakeStatusTopic(_robotId))
+                    .WithPayload(JsonSerializer.Serialize(_rcpStatus))
+                    .Build();
+
+        await _mqttClient.PublishAsync(msg);
+        _rcpStatus = _rcpStatus with { Sequence = _rcpStatus.Sequence + 1 };
     }
 
     private void AddLog(string message) {
