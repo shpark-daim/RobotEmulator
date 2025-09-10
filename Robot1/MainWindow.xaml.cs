@@ -37,6 +37,7 @@ public partial class MainWindow : Window {
     private Dictionary<string, Point> _positions = [];
     private readonly Queue<MqttApplicationMessage> _messageQueue = new();
     private bool _isProcessingQueue = false;
+    private int _duration = 5000;
     public MainWindow() {
         InitializeComponent();
         InitializePosition();
@@ -318,14 +319,14 @@ public partial class MainWindow : Window {
             var animationX = new DoubleAnimation {
                 From = Canvas.GetLeft(Product),
                 To = targetPos.X - 10, // Product 중심을 목표점에 맞춤
-                Duration = TimeSpan.FromSeconds(2.5),
+                Duration = TimeSpan.FromMilliseconds(_duration),
                 EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
             };
 
             var animationY = new DoubleAnimation {
                 From = Canvas.GetTop(Product),
                 To = targetPos.Y - 10,
-                Duration = TimeSpan.FromSeconds(2.5),
+                Duration = TimeSpan.FromMilliseconds(_duration),
                 EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
             };
 
@@ -402,7 +403,7 @@ public partial class MainWindow : Window {
             var upAnimation = new DoubleAnimation {
                 From = Canvas.GetTop(Product),
                 To = Canvas.GetTop(Product) - 15,
-                Duration = TimeSpan.FromSeconds(1.0),
+                Duration = TimeSpan.FromMilliseconds(_duration),
                 EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
             };
 
@@ -422,7 +423,7 @@ public partial class MainWindow : Window {
             var downAnimation = new DoubleAnimation {
                 From = Canvas.GetTop(Product),
                 To = Canvas.GetTop(Product) + 15,
-                Duration = TimeSpan.FromSeconds(1.0),
+                Duration = TimeSpan.FromMilliseconds(_duration),
                 EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
             };
 
