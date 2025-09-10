@@ -27,8 +27,15 @@ public partial class MainWindow : Window {
     private DateTime _lastStatusReportTime = DateTime.MinValue;
     private readonly object _statusLock = new object();
 
+    private string _home = "home";
+    private Point _initialRobotBasePosition;
+    private (string Id, Point Point) _currentRobotArmPosition;
+    private bool _isProductVisible = false;
+    private Dictionary<string, Point> _positions = [];
+
     public MainWindow() {
         InitializeComponent();
+        InitializePosition();
         SetupMqttClient();
     }
 
@@ -122,9 +129,12 @@ public partial class MainWindow : Window {
         if (topic.Contains("/cmd/sync")) {
             var syncCommand = JsonSerializer.Deserialize<RcpSyncCommand>(message);
             await HandleSyncCommand(syncCommand);
-        } else if (topic.Contains("/cmd/transfer")) {
-            var transferCommand = JsonSerializer.Deserialize<RcpTransferCommand>(message);
-            await HandleTransferCommand(transferCommand);
+        } else if (topic.Contains("/cmd/pick")) {
+            var cmd = JsonSerializer.Deserialize<RcpPickCommand>(message);
+            await HandlePickCommand(cmd);
+        } else if (topic.Contains("/cmd/place")) {
+            var cmd = JsonSerializer.Deserialize<RcpPlaceCommand>(message);
+            await HandlePlaceCommand(cmd);
         }
     }
 
@@ -138,159 +148,247 @@ public partial class MainWindow : Window {
         }
     }
 
-    private async Task HandleTransferCommand(RcpTransferCommand? transferCommand) {
-        if (transferCommand != null && !string.IsNullOrEmpty(transferCommand.Source) && !string.IsNullOrEmpty(transferCommand.Dest)) {
-            (string from, string to) = Positioning(transferCommand);
-            if (string.IsNullOrEmpty(from) || string.IsNullOrEmpty(to)) {
-                Dispatcher.Invoke(() => AddLog("알 수 없는 위치입니다. 명령을 무시합니다."));
-            } else {
-                Dispatcher.Invoke(() => AddLog($"이동 명령: {from} -> {to}"));
-            }
-            await Dispatcher.InvokeAsync(() => MoveRobot(from, to));
-        } else { Dispatcher.Invoke(() => AddLog("잘못된 transfer 명령입니다. 명령을 무시합니다.")); }
-    }
-
-    #region transfer
-    private static (string From, string To) Positioning(RcpTransferCommand cmd) {
-        var from = "";
-        var to = "";
-        if (cmd.Source == "s5") {
-            if (cmd.Pickupslot == 0) from = "A";
-            if (cmd.Pickupslot == 1) from = "B";
-            to = "C";
-        }
-
-        if (cmd.Source == "s4") {
-            from = "D";
-            if (cmd.Dest == "s5" && cmd.Dropoffslot == 0) to = "A";
-            if (cmd.Dest == "s5" && cmd.Dropoffslot == 1) to = "B";
-        }
-
-        // fixme : 삭제
-        if (cmd.Source == "s3") from = "C";
-        if (cmd.Dest == "s4") to = "D";
-        return (from, to);
-    }
-
-    private void MoveRobot(string from, string to) {
+    private async Task HandlePickCommand(RcpPickCommand? cmd) {
         if (_isMoving) {
-            AddLog("로봇이 이동 중입니다. 명령을 무시합니다.");
+            Dispatcher.Invoke(() => AddLog("로봇이 이동 중입니다. 명령을 무시합니다."));
+            
             return;
-        }
+        } else if (cmd is { }) {
+            await Dispatcher.InvokeAsync(() => AddLog($"Pick 명령 처리: Pickup={cmd.PickupId}"));
 
-        if (from != to) {
-            MoveRobotWithWaypoint(from, to);
+            var from = _home;
+            var to = cmd.PickupId;
+            await MoveRobotArm(from, to);
+
+            _rcpStatus = _rcpStatus with { WorkingState = RcpWorkingState.K };
+            await SendStatus();
+            if (!_rcpStatus.CarrierPresent) {
+                await CreateProductAtPosition(to);
+                await PickAnimation();
+                Dispatcher.Invoke(() => AddLog($"{to}에서 pick 완료"));
+                
+                _rcpStatus = _rcpStatus with { WorkingState = RcpWorkingState.I, CarrierPresent = true };
+                await SendStatus();
+            }
+            _isMoving = false;
         }
     }
 
-    private async void MoveRobotWithWaypoint(string from, string to) {
+    private async Task HandlePlaceCommand(RcpPlaceCommand? cmd) {
+        if (_isMoving) {
+            Dispatcher.Invoke(() => AddLog("로봇이 이동 중입니다. 명령을 무시합니다."));
+            
+            return;
+        } else if (cmd is { }) {
+            await Dispatcher.InvokeAsync(() => AddLog($"Place 명령 처리: Dropoff={cmd.DropoffId}"));
+
+            var from = _currentRobotArmPosition.Id;
+            var to = cmd.DropoffId;
+            await MoveRobotArmWithProduct(from, to);
+
+            _rcpStatus = _rcpStatus with { WorkingState = RcpWorkingState.L };
+            await SendStatus();
+            if (_rcpStatus.CarrierPresent) {
+                await PlaceAnimation();
+                await HideProduct();
+                Dispatcher.Invoke(() => AddLog($"{to}에 place 완료"));
+                
+                _rcpStatus = _rcpStatus with { WorkingState = RcpWorkingState.I, CarrierPresent = false };
+                await SendStatus();
+            }
+
+            await MoveRobotArm(to, _home);
+            _isMoving = false;
+        }
+    }
+
+    private async Task SendStatus() {
+        if (_mqttClient?.IsConnected != true) return;
+        // rcpStatus stale?
+        var msg = new MqttApplicationMessageBuilder()
+                    .WithTopic(RCP.MakeStatusTopic(_robotId))
+                    .WithPayload(JsonSerializer.Serialize(_rcpStatus))
+                    .Build();
+
+        await _mqttClient.PublishAsync(msg);
+        lock (_statusLock) {
+            _lastStatusReportTime = DateTime.Now;
+        }
+        _rcpStatus = _rcpStatus with { Sequence = _rcpStatus.Sequence + 1 };
+        await SendStatus();
+    }
+
+    private void AddLog(string message) {
+        var timestamp = DateTime.Now.ToString("HH:mm:ss");
+        LogText.Text += $"\n[{timestamp}] {message}";
+
+        // 스크롤을 맨 아래로
+        if (LogText.Parent is ScrollViewer scrollViewer) {
+            scrollViewer.ScrollToEnd();
+        }
+    }
+
+    protected override async void OnClosed(EventArgs e) {
+        await StopStatusReporting();
+        if (_mqttClient?.IsConnected == true) {
+            await _mqttClient.DisconnectAsync();
+        }
+        _mqttClient?.Dispose();
+        base.OnClosed(e);
+    }
+
+    #region draw
+    private async Task InitializePosition() {
+        //_initialRobotBasePosition = new Point(Canvas.GetLeft(RobotArm), Canvas.GetTop(RobotArm));
+
+        _positions.TryAdd("home", new Point(_initialRobotBasePosition.X + 10, _initialRobotBasePosition.Y + 10));
+        _positions.TryAdd("s5_0", new Point(Canvas.GetLeft(PositionA) + 20, Canvas.GetTop(PositionA) + 20));
+        _positions.TryAdd("s5_1", new Point(Canvas.GetLeft(PositionB) + 20, Canvas.GetTop(PositionB) + 20));
+        _positions.TryAdd("s3", new Point(Canvas.GetLeft(PositionC) + 20, Canvas.GetTop(PositionC) - 20));
+        _positions.TryAdd("s4", new Point(Canvas.GetLeft(PositionD) + 20, Canvas.GetTop(PositionD) - 20));
+
+        _currentRobotArmPosition = (_home, _positions["home"]);
+
+        await HideProduct();
+    }
+
+    private async Task MoveRobotArm(string from, string to) {
         var fromPos = GetPositionFromUI(from);
         var toPos = GetPositionFromUI(to);
 
         if (fromPos == null || toPos == null) {
-            AddLog($"알 수 없는 위치: {from} 또는 {to}");
+            Dispatcher.Invoke(() => AddLog($"알 수 없는 위치: {from} 또는 {to}"));
             return;
         }
 
         _isMoving = true;
+        Dispatcher.Invoke(() => AddLog($"로봇 팔 {from}에서 {to}로 이동 시작"));
 
-        // 현재 로봇 위치 확인
-        var currentX = Canvas.GetLeft(Product);
-        var currentY = Canvas.GetTop(Product);
-        var currentPos = new Point(currentX + 10, currentY + 10); // 로봇 중심점
-
-        // from으로 이동
-        if (Math.Abs(currentPos.X - fromPos.Value.X) > 5 || Math.Abs(currentPos.Y - fromPos.Value.Y) > 5) {
-            AddLog($"현재 위치에서 {from}으로 이동 시작");
-            _rcpStatus = _rcpStatus with { WorkingState = RcpWorkingState.M };
-            await MoveRobotToPosition(fromPos.Value);
-
-
-            AddLog($"{from} 도착");
-            _rcpStatus = _rcpStatus with { WorkingState = RcpWorkingState.K };
-            // fixme
-            if (!_rcpStatus.CarrierPresent) {
-                await PickAnimation();
-                AddLog($"{from}에서 pick 완료");
-                _rcpStatus = _rcpStatus with { WorkingState = RcpWorkingState.I, CarrierPresent = true };
-            }
-            //await Task.Delay(300); // 잠시 대기
-            //_rcpStatus = _rcpStatus with { CarrierPresent = true };
-        }
-
-        // from에서 to로 이동
-        AddLog($"{from}에서 {to}로 이동 시작");
         _rcpStatus = _rcpStatus with { WorkingState = RcpWorkingState.M };
-        await MoveRobotToPosition(toPos.Value);
-        AddLog($"{to} 도착");
+        await SendStatus();
+        //await MoveRobotArmToPosition(toPos.Value);
+        _currentRobotArmPosition = (to, toPos.Value);
 
-        _rcpStatus = _rcpStatus with { WorkingState = RcpWorkingState.L };
-        if (_rcpStatus.CarrierPresent) {
-            await PlaceAnimation(); // 물건 내려놓기
-            AddLog($"{to}에 place 완료");
-            _rcpStatus = _rcpStatus with { WorkingState = RcpWorkingState.I, CarrierPresent = false };
-        }
-        //await Task.Delay(300); // 잠시 대기
-        //_rcpStatus = _rcpStatus with { WorkingState = RcpWorkingState.I, CarrierPresent = false };
-
-        _isMoving = false;
+        Dispatcher.Invoke(() => AddLog($"로봇 팔 {to} 도착"));
     }
 
-    private Task<bool> MoveRobotToPosition(Point targetPos) {
+    private async Task MoveRobotArmWithProduct(string from, string to) {
+        var fromPos = GetPositionFromUI(from);
+        var toPos = GetPositionFromUI(to);
+
+        if (fromPos == null || toPos == null) {
+            Dispatcher.Invoke(() => AddLog($"알 수 없는 위치: {from} 또는 {to}"));
+            return;
+        }
+
+        _isMoving = true;
+        Dispatcher.Invoke(() => AddLog($"로봇 팔과 Product {from}에서 {to}로 이동 시작"));
+        _rcpStatus = _rcpStatus with { WorkingState = RcpWorkingState.M };
+        await SendStatus();
+        //var robotTask = MoveRobotArmToPosition(toPos.Value);
+        var productTask = MoveProductToPosition(toPos.Value);
+
+        await Task.WhenAll(/*robotTask, */productTask);
+        _currentRobotArmPosition = (to, toPos.Value);
+
+        Dispatcher.Invoke(() => AddLog($"로봇 팔과 Product {to} 도착"));
+    }
+
+    //private Task<bool> MoveRobotArmToPosition(Point targetPos) {
+    //    var tcs = new TaskCompletionSource<bool>();
+    //    Dispatcher.InvokeAsync(() => {
+    //        var currentGripperPos = new Point(
+    //        Canvas.GetLeft(RobotArm) + 80, // Gripper의 현재 X
+    //        Canvas.GetTop(RobotArm) + 55   // Gripper의 현재 Y
+    //    );
+
+    //        var animationX = new DoubleAnimation {
+    //            From = Canvas.GetLeft(RobotArm),
+    //            To = targetPos.X - 80,
+    //            Duration = TimeSpan.FromSeconds(2.5),
+    //            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+    //        };
+
+    //        var animationY = new DoubleAnimation {
+    //            From = Canvas.GetTop(RobotArm),
+    //            To = targetPos.Y - 55,
+    //            Duration = TimeSpan.FromSeconds(2.5),
+    //            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+    //        };
+
+    //        animationX.Completed += (s, e) => {
+    //            tcs.SetResult(true);
+    //        };
+
+    //        RobotArm.BeginAnimation(Canvas.LeftProperty, animationX);
+    //        RobotArm.BeginAnimation(Canvas.TopProperty, animationY);
+    //    });
+    //    return tcs.Task;
+    //}
+
+    private Task<bool> MoveProductToPosition(Point targetPos) {
         var tcs = new TaskCompletionSource<bool>();
+        Dispatcher.InvokeAsync(() => {
+            var animationX = new DoubleAnimation {
+                From = Canvas.GetLeft(Product),
+                To = targetPos.X - 10, // Product 중심을 목표점에 맞춤
+                Duration = TimeSpan.FromSeconds(2.5),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+            };
 
-        // 로봇을 네모 중심으로 이동 (로봇 크기 20x20의 중심점 보정)
-        var animationX = new DoubleAnimation {
-            From = Canvas.GetLeft(Product),
-            To = targetPos.X - 10, // 로봇 중심을 네모 중심에 맞추기
-            Duration = TimeSpan.FromSeconds(2.5), // 각 구간 2.5초씩
-            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
-        };
+            var animationY = new DoubleAnimation {
+                From = Canvas.GetTop(Product),
+                To = targetPos.Y - 10,
+                Duration = TimeSpan.FromSeconds(2.5),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+            };
 
-        var animationY = new DoubleAnimation {
-            From = Canvas.GetTop(Product),
-            To = targetPos.Y - 10, // 로봇 중심을 네모 중심에 맞추기
-            Duration = TimeSpan.FromSeconds(2.5),
-            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
-        };
+            animationX.Completed += (s, e) => {
+                tcs.SetResult(true);
+            };
 
-        // 로봇 라벨도 함께 이동
-        var labelAnimationX = new DoubleAnimation {
-            From = Canvas.GetLeft(ProductLabel),
-            To = targetPos.X + 15, // 라벨을 로봇 오른쪽에 배치
-            Duration = TimeSpan.FromSeconds(2.5),
-            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
-        };
-
-        var labelAnimationY = new DoubleAnimation {
-            From = Canvas.GetTop(ProductLabel),
-            To = targetPos.Y - 10, // 라벨을 로봇과 같은 높이에
-            Duration = TimeSpan.FromSeconds(2.5),
-            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
-        };
-
-        // 애니메이션 완료 이벤트
-        animationX.Completed += (s, e) => {
-            tcs.SetResult(true);
-        };
-
-        // 애니메이션 시작
-        Product.BeginAnimation(Canvas.LeftProperty, animationX);
-        Product.BeginAnimation(Canvas.TopProperty, animationY);
-        ProductLabel.BeginAnimation(Canvas.LeftProperty, labelAnimationX);
-        ProductLabel.BeginAnimation(Canvas.TopProperty, labelAnimationY);
-
+            Product.BeginAnimation(Canvas.LeftProperty, animationX);
+            Product.BeginAnimation(Canvas.TopProperty, animationY);
+        });
         return tcs.Task;
     }
 
+    private async Task CreateProductAtPosition(string position) {
+        var pos = GetPositionFromUI(position);
+        if (pos.HasValue) {
+            await Dispatcher.InvokeAsync(() => {
+                Canvas.SetLeft(Product, pos.Value.X - 10);
+                Canvas.SetTop(Product, pos.Value.Y - 10);
+                Product.Visibility = Visibility.Visible;
+                _isProductVisible = true;
+            });
+        }
+    }
+
+    private async Task HideProduct() {
+        await Dispatcher.InvokeAsync(() => {
+            Product.Visibility = Visibility.Hidden;
+            _isProductVisible = false;
+        });
+    }
+
+    // 현재 로봇 팔 위치를 문자열로 반환
+    private string GetCurrentRobotArmPositionString() {
+        // 현재 위치와 가장 가까운 등록된 위치 찾기
+        foreach (var kvp in _positions) {
+            var distance = Math.Sqrt(
+                Math.Pow(_currentRobotArmPosition.Point.X - kvp.Value.X, 2) +
+                Math.Pow(_currentRobotArmPosition.Point.Y - kvp.Value.Y, 2)
+            );
+            if (distance < 5) { // 5픽셀 오차 범위
+                return kvp.Key;
+            }
+        }
+        return $"({_currentRobotArmPosition.Point.X}, {_currentRobotArmPosition.Point.Y})";
+    }
+
     private Point? GetPositionFromUI(string position) {
-        return position switch {
-            "A" => new Point(Canvas.GetLeft(PositionA) + 20, Canvas.GetTop(PositionA) + 20), // 네모 중심 (40/2 = 20)
-            "B" => new Point(Canvas.GetLeft(PositionB) + 20, Canvas.GetTop(PositionB) + 20), // 네모 중심
-            "C" => new Point(Canvas.GetLeft(PositionC) + 20, MoveCanvas.ActualHeight - 40 + 20), // Canvas 높이에서 역산 후 중심
-            "D" => new Point(Canvas.GetLeft(PositionD) + 20, MoveCanvas.ActualHeight - 40 + 20), // Canvas 높이에서 역산 후 중심
-            _ => null
-        };
+        return _positions.ContainsKey(position) ? _positions[position] : null;
     }
 
     private async Task PickAnimation() {
@@ -366,39 +464,7 @@ public partial class MainWindow : Window {
             await upTask.Task;
         });
     }
-    #endregion transfer
+    #endregion draw
 
-    private async Task SendStatus() {
-        if (_mqttClient?.IsConnected != true) return;
-        // rcpStatus stale?
-        var msg = new MqttApplicationMessageBuilder()
-                    .WithTopic(RCP.MakeStatusTopic(_robotId))
-                    .WithPayload(JsonSerializer.Serialize(_rcpStatus))
-                    .Build();
 
-        await _mqttClient.PublishAsync(msg);
-        lock (_statusLock) {
-            _lastStatusReportTime = DateTime.Now;
-        }
-        _rcpStatus = _rcpStatus with { Sequence = _rcpStatus.Sequence + 1 };
-    }
-
-    private void AddLog(string message) {
-        var timestamp = DateTime.Now.ToString("HH:mm:ss");
-        LogText.Text += $"\n[{timestamp}] {message}";
-
-        // 스크롤을 맨 아래로
-        if (LogText.Parent is ScrollViewer scrollViewer) {
-            scrollViewer.ScrollToEnd();
-        }
-    }
-
-    protected override async void OnClosed(EventArgs e) {
-        await StopStatusReporting();
-        if (_mqttClient?.IsConnected == true) {
-            await _mqttClient.DisconnectAsync();
-        }
-        _mqttClient?.Dispose();
-        base.OnClosed(e);
-    }
 }

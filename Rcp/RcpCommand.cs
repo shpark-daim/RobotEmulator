@@ -19,7 +19,12 @@ public record RcpSyncCommand(string Id, long Sequence)
 public record RcpModeCommand(string Id, RcpMode Mode)
     : RcpCommand();
 
+public record RcpPickCommand(string PickupId)
+    : RcpCommand();
+
+public record RcpPlaceCommand(string DropoffId)
+    : RcpCommand();
+
 public record RcpTransferCommand(string Id, long RefSeq, string Source, string Dest, string CarrierId, int Pickupslot = 0, int Dropoffslot = 0)
     : RcpTaskCommand(RefSeq);
 
-// todo : home, pick, place

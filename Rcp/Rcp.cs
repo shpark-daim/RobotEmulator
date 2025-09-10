@@ -18,8 +18,8 @@ public static class Rcp {
     public const string CmdMode = "mode";
     public const string CmdTransfer = "transfer";
     //public const string CmdHome = "home";
-    //public const string CmdPick = "pick";
-    //public const string CmdPlace = "place";
+    public const string CmdPick = "pick";
+    public const string CmdPlace = "place";
 
     public static string MakeStatusTopic(string target, string prefix = PrefixDefault) =>
         $"{prefix}/{Identifier}/{Version}/{target}/{TypeStatus}";
@@ -52,7 +52,8 @@ public static class Rcp {
 [JsonSerializable(typeof(RcpSyncCommand))]
 [JsonSerializable(typeof(RcpModeCommand))]
 [JsonSerializable(typeof(RcpTransferCommand))]
-// todo : home, pick, place
+[JsonSerializable(typeof(RcpPickCommand))]
+[JsonSerializable(typeof(RcpPlaceCommand))]
 public partial class RcpContext : JsonSerializerContext {
     static RcpContext() {
         OptionsWithRelaxedEscaping = new(Default.Options) {
