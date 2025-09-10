@@ -218,6 +218,8 @@ public partial class MainWindow : Window {
             }
 
             await MoveRobotArm(to, _home);
+            _rcpStatus = _rcpStatus with { WorkingState = RcpWorkingState.I, CarrierPresent = false };
+            await SendStatus();
             _isMoving = false;
         }
     }
@@ -273,9 +275,9 @@ public partial class MainWindow : Window {
         _rcpStatus = _rcpStatus with { WorkingState = RcpWorkingState.M };
         await SendStatus();
         //var robotTask = MoveRobotArmToPosition(toPos.Value);
-        var productTask = MoveProductToPosition(toPos.Value);
+        await MoveProductToPosition(toPos.Value);
 
-        await Task.WhenAll(/*robotTask, */productTask);
+        //await Task.WhenAll(/*robotTask, */productTask);
         _currentRobotArmPosition = (to, toPos.Value);
 
         Dispatcher.Invoke(() => AddLog($"로봇 팔과 Product {to} 도착"));
@@ -344,8 +346,14 @@ public partial class MainWindow : Window {
         var pos = GetPositionFromUI(position);
         if (pos.HasValue) {
             await Dispatcher.InvokeAsync(() => {
-                Canvas.SetLeft(Product, pos.Value.X - 10);
-                Canvas.SetTop(Product, pos.Value.Y - 10);
+                // 기존 애니메이션 완전히 중지
+                Product.BeginAnimation(Canvas.LeftProperty, null);
+                Product.BeginAnimation(Canvas.TopProperty, null);
+
+                var newLeft = pos.Value.X - 10;
+                var newTop = pos.Value.Y - 10;
+                Canvas.SetLeft(Product, newLeft);
+                Canvas.SetTop(Product, newTop);
                 Product.Visibility = Visibility.Visible;
                 _isProductVisible = true;
             });
@@ -379,77 +387,77 @@ public partial class MainWindow : Window {
     }
 
     private async Task PickAnimation() {
+        var upTask = new TaskCompletionSource<bool>();
         await Dispatcher.InvokeAsync(async () => {
             AddLog("물건 픽업 중...");
 
+            // RobotArm 애니메이션 (선택 사항)
             // 1. Product가 아래로 내려가는 애니메이션 (집는 동작)
-            var downAnimation = new DoubleAnimation {
-                From = Canvas.GetTop(Product),
-                To = Canvas.GetTop(Product) + 15,
-                Duration = TimeSpan.FromSeconds(1.0),
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-            };
-
-            var downTask = new TaskCompletionSource<bool>();
-            downAnimation.Completed += (s, e) => downTask.SetResult(true);
-
-            Product.BeginAnimation(Canvas.TopProperty, downAnimation);
-            await downTask.Task;
+            //var downAnimation = new DoubleAnimation {
+            //    From = Canvas.GetTop(Product),
+            //    To = Canvas.GetTop(Product) + 15,
+            //    Duration = TimeSpan.FromMilliseconds(duration),
+            //    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            //};
+            //var downTask = new TaskCompletionSource<bool>();
+            //downAnimation.Completed += (s, e) => downTask.SetResult(true);
+            //Product.BeginAnimation(Canvas.TopProperty, downAnimation);
+            //await downTask.Task;
 
             // 2. 잠시 대기 (집는 시간)
-            await Task.Delay(800);
+            //await Task.Delay(duration);
 
-            // 3. Product가 다시 위로 올라가는 애니메이션
+            // 3. Product가 위로 올라가는 애니메이션
             var upAnimation = new DoubleAnimation {
                 From = Canvas.GetTop(Product),
-                To = Canvas.GetTop(Product) - 15,
+                To = Canvas.GetTop(Product) - 20,
                 Duration = TimeSpan.FromMilliseconds(_duration),
                 EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
             };
 
-            var upTask = new TaskCompletionSource<bool>();
             upAnimation.Completed += (s, e) => upTask.SetResult(true);
 
             Product.BeginAnimation(Canvas.TopProperty, upAnimation);
-            await upTask.Task;
         });
+        await upTask.Task;
     }
 
     private async Task PlaceAnimation() {
+        var downTask = new TaskCompletionSource<bool>();
         await Dispatcher.InvokeAsync(async () => {
             AddLog("물건 배치 중...");
 
             // 1. Product가 아래로 내려가는 애니메이션 (놓는 동작)
             var downAnimation = new DoubleAnimation {
                 From = Canvas.GetTop(Product),
-                To = Canvas.GetTop(Product) + 15,
+                To = Canvas.GetTop(Product) + 20,
                 Duration = TimeSpan.FromMilliseconds(_duration),
                 EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
             };
 
-            var downTask = new TaskCompletionSource<bool>();
             downAnimation.Completed += (s, e) => downTask.SetResult(true);
 
             Product.BeginAnimation(Canvas.TopProperty, downAnimation);
-            await downTask.Task;
 
             // 2. 잠시 대기 (놓는 시간)
-            await Task.Delay(1200);
+            //await Task.Delay(5000);
 
+            // RobotArm 애니메이션 (선택 사항)
             // 3. Product가 다시 위로 올라가는 애니메이션
-            var upAnimation = new DoubleAnimation {
-                From = Canvas.GetTop(Product),
-                To = Canvas.GetTop(Product) - 15,
-                Duration = TimeSpan.FromSeconds(1.0),
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
-            };
+            //var upAnimation = new DoubleAnimation {
+            //    From = Canvas.GetTop(Product),
+            //    To = Canvas.GetTop(Product) - 15,
+            //    Duration = TimeSpan.FromSeconds(1.0),
+            //    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
+            //};
 
-            var upTask = new TaskCompletionSource<bool>();
-            upAnimation.Completed += (s, e) => upTask.SetResult(true);
+            //var upTask = new TaskCompletionSource<bool>();
+            //upAnimation.Completed += (s, e) => upTask.SetResult(true);
 
-            Product.BeginAnimation(Canvas.TopProperty, upAnimation);
-            await upTask.Task;
+            //Product.BeginAnimation(Canvas.TopProperty, upAnimation);
+            //await upTask.Task;
         });
+        await downTask.Task;
     }
     #endregion draw
 
