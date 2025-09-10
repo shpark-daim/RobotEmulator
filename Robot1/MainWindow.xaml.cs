@@ -2,11 +2,10 @@
 using Rcp;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
-using System.Windows.Shapes;
 using System.Windows.Threading;
 using RCP = Rcp.Rcp;
 
@@ -38,10 +37,14 @@ public partial class MainWindow : Window {
     private readonly Queue<MqttApplicationMessage> _messageQueue = new();
     private bool _isProcessingQueue = false;
     private int _duration = 5000;
+    private Storyboard? _currentAnimation;
     public MainWindow() {
         InitializeComponent();
-        InitializePosition();
+        _ = InitializePosition();
         SetupMqttClient();
+        AutoButton.Click += async (sender, e) => await AutoButtonClicked(sender, e);
+        ManualButton.Click += async (sender, e) => await ManualButtonClicked(sender, e);
+        ErrorButton.Click += async (sender, e) => await ErrorButtonClicked(sender, e);
     }
 
     #region mqtt
@@ -283,6 +286,46 @@ public partial class MainWindow : Window {
         Dispatcher.Invoke(() => AddLog($"로봇 팔과 Product {to} 도착"));
     }
 
+    private async Task ChangeToManualMode() {
+        await Dispatcher.InvokeAsync(async () => {
+            AddLog("Change to Manual Mode");
+            Front.Fill = new SolidColorBrush(Colors.LightYellow);
+            UpperSide.Fill = new SolidColorBrush(Colors.LightYellow);
+            RightSide.Fill = new SolidColorBrush(Colors.LightYellow);
+            _rcpStatus = _rcpStatus with { Mode = RcpMode.M, WorkingState = RcpWorkingState.I, ErrorCodes = [] };
+            await SendStatus();
+        });
+    }
+
+    private async Task ChangeToAutoMode() {
+        await Dispatcher.InvokeAsync(async () => {
+            AddLog("Change to Auto Mode");
+            Front.Fill = new SolidColorBrush(Colors.SandyBrown);
+            UpperSide.Fill = new SolidColorBrush(Colors.BurlyWood);
+            RightSide.Fill = new SolidColorBrush(Colors.Tan);
+            _rcpStatus = _rcpStatus with { 
+                Mode = RcpMode.A,
+                WorkingState = RcpWorkingState.I,
+            };
+            await SendStatus();
+        });
+    }
+
+    private async Task ChangeToErrorMode() {
+        await Dispatcher.InvokeAsync(async () => {
+            AddLog("Change to Error Mode");
+            Front.Fill = new SolidColorBrush(Colors.LightPink);
+            UpperSide.Fill = new SolidColorBrush(Colors.LightPink);
+            RightSide.Fill = new SolidColorBrush(Colors.LightPink);
+            _rcpStatus = _rcpStatus with {
+                Mode = RcpMode.E,
+                WorkingState = RcpWorkingState.I,
+                ErrorCodes = [0, 1]
+            };
+            await SendStatus();
+        });
+    }
+
     //private Task<bool> MoveRobotArmToPosition(Point targetPos) {
     //    var tcs = new TaskCompletionSource<bool>();
     //    Dispatcher.InvokeAsync(() => {
@@ -497,6 +540,38 @@ public partial class MainWindow : Window {
         await QueueMessage(msg);
     }
     #endregion status report
+
+    #region buttons
+    private async Task AutoButtonClicked(object sender, RoutedEventArgs e) {
+        await Dispatcher.InvokeAsync(async () => {
+            AddLog("Auto 버튼 클릭 - Auto 모드로 전환");
+        });
+        await ChangeToAutoMode();
+    }
+
+    private async Task ManualButtonClicked(object sender, RoutedEventArgs e) {
+        await Dispatcher.InvokeAsync(async () => {
+            AddLog("Manual 버튼 클릭 - Manual 모드로 전환");
+        });
+        await ChangeToManualMode();
+    }
+
+    private async Task ErrorButtonClicked(object sender, RoutedEventArgs e) {
+        await Dispatcher.InvokeAsync(async () => {
+            AddLog("Error 버튼 클릭 - Error 모드로 전환");
+
+            // 기존 애니메이션 완전히 중지
+            if (_currentAnimation != null) {
+                _currentAnimation.Stop();
+                _currentAnimation = null;
+            }
+            Product.BeginAnimation(Canvas.LeftProperty, null);
+            Product.BeginAnimation(Canvas.TopProperty, null);
+            _isMoving = false;
+            await ChangeToErrorMode();
+        });
+    }
+    #endregion buttons
 
     private void AddLog(string message) {
         var timestamp = DateTime.Now.ToString("HH:mm:ss");
