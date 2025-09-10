@@ -33,12 +33,15 @@ public partial class MainWindow : Window {
     private bool _isProductVisible = false;
     private Dictionary<string, Point> _positions = [];
 
+    private readonly Queue<MqttApplicationMessage> _messageQueue = new();
+    private bool _isProcessingQueue = false;
     public MainWindow() {
         InitializeComponent();
         InitializePosition();
         SetupMqttClient();
     }
 
+    #region mqtt
     private void SetupMqttClient() {
         var mqttFactory = new MqttClientFactory();
         _mqttClient = mqttFactory.CreateMqttClient();
@@ -138,6 +141,44 @@ public partial class MainWindow : Window {
         }
     }
 
+    private async Task QueueMessage(MqttApplicationMessage msg) {
+        _messageQueue.Enqueue(msg);
+
+        if (!_isProcessingQueue) {
+            await ProcessMessageQueue();
+        }
+    }
+
+    private async Task ProcessMessageQueue() {
+        _isProcessingQueue = true;
+
+        try {
+            while (_messageQueue.Count > 0) {
+                var msg = _messageQueue.Dequeue();
+                await _mqttClient!.PublishAsync(msg);
+                lock (_statusLock) {
+                    _lastStatusReportTime = DateTime.Now;
+                }
+                _rcpStatus = _rcpStatus with { Sequence = _rcpStatus.Sequence + 1 };
+            }
+        } catch (Exception ex) {
+            AddLog($"메시지 큐 처리 오류: {ex.Message}");
+        } finally {
+            _isProcessingQueue = false;
+        }
+    }
+
+    protected override async void OnClosed(EventArgs e) {
+        await StopStatusReporting();
+        if (_mqttClient?.IsConnected == true) {
+            await _mqttClient.DisconnectAsync();
+        }
+        _mqttClient?.Dispose();
+        base.OnClosed(e);
+    }
+    #endregion mqtt
+
+    #region handle command
     private async Task HandleSyncCommand(RcpSyncCommand? cmd) {
         if (cmd is { }) {
             await Dispatcher.InvokeAsync(() => AddLog($"Sync 명령 처리: Id={cmd.Id}, Sequence={cmd.Sequence}"));
