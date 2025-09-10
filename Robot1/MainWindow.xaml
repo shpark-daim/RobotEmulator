@@ -22,7 +22,7 @@
             <Rectangle Width="100" Height="45" 
                Fill="LightGray" 
                Canvas.Left="145" Canvas.Top="0"/>
-            
+
             <!-- A 위치 (상단 왼쪽) -->
             <Rectangle Name="PositionA" Canvas.Left="150" Canvas.Top="0" Width="40" Height="40" 
                       Fill="LightBlue" Stroke="Blue" StrokeThickness="2"/>
@@ -61,7 +61,75 @@
                          StrokeThickness="1"
                          Points="20,0 25,-3 25,17 20,20"/>
             </Canvas>
-            <TextBlock Name="ProductLabel" Canvas.Left="190" Canvas.Top="10" Text="Product" FontSize="10" FontWeight="Bold"/>
+            <!--<Canvas Name="RobotArm" Canvas.Left="145" Canvas.Top="10">
+                --><!-- 로봇 팔 베이스 (오른쪽에 고정) --><!--
+                <Ellipse Name="RobotBase" 
+                         Canvas.Left="220" Canvas.Top="50" 
+                         Width="15" Height="15" 
+                         Fill="DarkGray" 
+                         Stroke="Black" 
+                         StrokeThickness="2"/>
+
+                --><!-- 로봇 팔 첫 번째 관절 --><!--
+                <Line Name="Arm1" 
+                      X1="227.5" Y1="57.5" 
+                      X2="200" Y2="45"
+                      Stroke="SlateGray" 
+                      StrokeThickness="4" 
+                      StrokeEndLineCap="Round"/>
+
+                --><!-- 로봇 팔 첫 번째 관절점 --><!--
+                <Ellipse Name="Joint1" 
+                     Canvas.Left="195" Canvas.Top="40" 
+                     Width="10" Height="10" 
+                     Fill="Gray" 
+                     Stroke="Black" 
+                     StrokeThickness="1"/>
+
+                --><!-- 로봇 팔 두 번째 관절 --><!--
+                <Line Name="Arm2" 
+                      X1="200" Y1="45" 
+                      X2="80" Y2="55"
+                      Stroke="SlateGray" 
+                      StrokeThickness="4" 
+                      StrokeEndLineCap="Round"/>
+
+                --><!-- 로봇 팔 두 번째 관절점 --><!--
+                <Ellipse Name="Joint2" 
+                         Canvas.Left="75" Canvas.Top="50" 
+                         Width="10" Height="10" 
+                         Fill="Gray" 
+                         Stroke="Black" 
+                         StrokeThickness="1"/>
+
+                --><!-- 로봇 팔 세 번째 관절 (그리퍼까지) --><!--
+                <Line Name="Arm3" 
+                      X1="180" Y1="55" 
+                      X2="85" Y2="50"
+                      Stroke="SlateGray" 
+                      StrokeThickness="4" 
+                      StrokeEndLineCap="Round" Canvas.Left="-57" HorizontalAlignment="Left" VerticalAlignment="Top" Width="138" Canvas.Top="2"/>
+
+                --><!-- 그리퍼 (집게) --><!--
+                <Canvas Name="Gripper" Canvas.Left="80" Canvas.Top="55">
+                    --><!-- 그리퍼 베이스 --><!--
+                    <Ellipse Width="8" Height="8" 
+                             Fill="DarkSlateGray" 
+                             Stroke="Black" 
+                             StrokeThickness="1" Canvas.Left="-4" Canvas.Top="-4" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                    --><!-- 그리퍼 집게 1 --><!--
+                    <Line X1="4" Y1="0" X2="4" Y2="-8"
+                          Stroke="Black" 
+                          StrokeThickness="2" 
+                          StrokeEndLineCap="Round" Canvas.Left="-4" Canvas.Top="-4"/>
+                    --><!-- 그리퍼 집게 2 --><!--
+                    <Line X1="4" Y1="8" X2="4" Y2="16"
+                          Stroke="Black" 
+                          StrokeThickness="2" 
+                          StrokeEndLineCap="Round" Canvas.Left="-4" Canvas.Top="-4"/>
+                </Canvas>
+            </Canvas>-->
+
         </Canvas>
 
         <!-- 하단 로그 -->
