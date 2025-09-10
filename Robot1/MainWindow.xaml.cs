@@ -2,9 +2,12 @@
 using Rcp;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Animation;
+using System.Windows.Shapes;
+using System.Windows.Threading;
 using RCP = Rcp.Rcp;
 
 namespace Robot1;
@@ -32,7 +35,6 @@ public partial class MainWindow : Window {
     private (string Id, Point Point) _currentRobotArmPosition;
     private bool _isProductVisible = false;
     private Dictionary<string, Point> _positions = [];
-
     private readonly Queue<MqttApplicationMessage> _messageQueue = new();
     private bool _isProcessingQueue = false;
     public MainWindow() {
@@ -70,30 +72,6 @@ public partial class MainWindow : Window {
             });
             await StopStatusReporting();
         };
-    }
-
-    private void StartStatusReporting() {
-        _statusReportTimer = new Timer(CheckAndReportStatus, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
-        Dispatcher.Invoke(() => {
-            AddLog("상태 보고 시작");
-        });
-    }
-
-    private async void CheckAndReportStatus(object? state) {
-        lock (_statusLock) {
-            var timeSinceLastReport = DateTime.Now - _lastStatusReportTime;
-            if (timeSinceLastReport.TotalSeconds < 2) return;
-        }
-
-        await SendStatus();
-    }
-
-    private async Task StopStatusReporting() {
-        if (_statusReportTimer != null) {
-            await _statusReportTimer.DisposeAsync();
-            _statusReportTimer = null;
-            AddLog("상태 보고 중지");
-        }
     }
 
     private async void ConnectButton_Click(object sender, RoutedEventArgs e) {
@@ -192,7 +170,7 @@ public partial class MainWindow : Window {
     private async Task HandlePickCommand(RcpPickCommand? cmd) {
         if (_isMoving) {
             Dispatcher.Invoke(() => AddLog("로봇이 이동 중입니다. 명령을 무시합니다."));
-            
+
             return;
         } else if (cmd is { }) {
             await Dispatcher.InvokeAsync(() => AddLog($"Pick 명령 처리: Pickup={cmd.PickupId}"));
@@ -207,7 +185,7 @@ public partial class MainWindow : Window {
                 await CreateProductAtPosition(to);
                 await PickAnimation();
                 Dispatcher.Invoke(() => AddLog($"{to}에서 pick 완료"));
-                
+
                 _rcpStatus = _rcpStatus with { WorkingState = RcpWorkingState.I, CarrierPresent = true };
                 await SendStatus();
             }
@@ -218,7 +196,7 @@ public partial class MainWindow : Window {
     private async Task HandlePlaceCommand(RcpPlaceCommand? cmd) {
         if (_isMoving) {
             Dispatcher.Invoke(() => AddLog("로봇이 이동 중입니다. 명령을 무시합니다."));
-            
+
             return;
         } else if (cmd is { }) {
             await Dispatcher.InvokeAsync(() => AddLog($"Place 명령 처리: Dropoff={cmd.DropoffId}"));
@@ -233,7 +211,7 @@ public partial class MainWindow : Window {
                 await PlaceAnimation();
                 await HideProduct();
                 Dispatcher.Invoke(() => AddLog($"{to}에 place 완료"));
-                
+
                 _rcpStatus = _rcpStatus with { WorkingState = RcpWorkingState.I, CarrierPresent = false };
                 await SendStatus();
             }
@@ -243,40 +221,7 @@ public partial class MainWindow : Window {
         }
     }
 
-    private async Task SendStatus() {
-        if (_mqttClient?.IsConnected != true) return;
-        // rcpStatus stale?
-        var msg = new MqttApplicationMessageBuilder()
-                    .WithTopic(RCP.MakeStatusTopic(_robotId))
-                    .WithPayload(JsonSerializer.Serialize(_rcpStatus))
-                    .Build();
-
-        await _mqttClient.PublishAsync(msg);
-        lock (_statusLock) {
-            _lastStatusReportTime = DateTime.Now;
-        }
-        _rcpStatus = _rcpStatus with { Sequence = _rcpStatus.Sequence + 1 };
-        await SendStatus();
-    }
-
-    private void AddLog(string message) {
-        var timestamp = DateTime.Now.ToString("HH:mm:ss");
-        LogText.Text += $"\n[{timestamp}] {message}";
-
-        // 스크롤을 맨 아래로
-        if (LogText.Parent is ScrollViewer scrollViewer) {
-            scrollViewer.ScrollToEnd();
-        }
-    }
-
-    protected override async void OnClosed(EventArgs e) {
-        await StopStatusReporting();
-        if (_mqttClient?.IsConnected == true) {
-            await _mqttClient.DisconnectAsync();
-        }
-        _mqttClient?.Dispose();
-        base.OnClosed(e);
-    }
+    #endregion handle command
 
     #region draw
     private async Task InitializePosition() {
@@ -507,5 +452,50 @@ public partial class MainWindow : Window {
     }
     #endregion draw
 
+    #region status report
+    private void StartStatusReporting() {
+        _statusReportTimer = new Timer(CheckAndReportStatus, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+        Dispatcher.Invoke(() => {
+            AddLog("상태 보고 시작");
+        });
+    }
 
+    private async void CheckAndReportStatus(object? state) {
+        lock (_statusLock) {
+            var timeSinceLastReport = DateTime.Now - _lastStatusReportTime;
+            if (timeSinceLastReport.TotalSeconds < 2) return;
+        }
+
+        await SendStatus();
+    }
+
+    private async Task StopStatusReporting() {
+        if (_statusReportTimer != null) {
+            await _statusReportTimer.DisposeAsync();
+            _statusReportTimer = null;
+            AddLog("상태 보고 중지");
+        }
+    }
+
+    private async Task SendStatus() {
+        if (_mqttClient?.IsConnected != true) return;
+        // rcpStatus stale?
+        var msg = new MqttApplicationMessageBuilder()
+                    .WithTopic(RCP.MakeStatusTopic(_robotId))
+                    .WithPayload(JsonSerializer.Serialize(_rcpStatus))
+                    .Build();
+
+        await QueueMessage(msg);
+    }
+    #endregion status report
+
+    private void AddLog(string message) {
+        var timestamp = DateTime.Now.ToString("HH:mm:ss");
+        LogText.Text += $"\n[{timestamp}] {message}";
+
+        // 스크롤을 맨 아래로
+        if (LogText.Parent is ScrollViewer scrollViewer) {
+            scrollViewer.ScrollToEnd();
+        }
+    }
 }
