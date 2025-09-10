@@ -230,8 +230,8 @@ public partial class MainWindow : Window {
         _positions.TryAdd("home", new Point(_initialRobotBasePosition.X + 10, _initialRobotBasePosition.Y + 10));
         _positions.TryAdd("s5_0", new Point(Canvas.GetLeft(PositionA) + 20, Canvas.GetTop(PositionA) + 20));
         _positions.TryAdd("s5_1", new Point(Canvas.GetLeft(PositionB) + 20, Canvas.GetTop(PositionB) + 20));
-        _positions.TryAdd("s3", new Point(Canvas.GetLeft(PositionC) + 20, Canvas.GetTop(PositionC) - 20));
-        _positions.TryAdd("s4", new Point(Canvas.GetLeft(PositionD) + 20, Canvas.GetTop(PositionD) - 20));
+        _positions.TryAdd("s3", new Point(Canvas.GetLeft(PositionC) + 20, Canvas.GetTop(PositionC) + 20));
+        _positions.TryAdd("s4", new Point(Canvas.GetLeft(PositionD) + 20, Canvas.GetTop(PositionD) + 20));
 
         _currentRobotArmPosition = (_home, _positions["home"]);
 

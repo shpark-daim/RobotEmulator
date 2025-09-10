@@ -34,14 +34,14 @@
             <TextBlock Canvas.Left="205" Canvas.Top="10" Text="S5_1" FontWeight="Bold" FontSize="14"/>
 
             <!-- C 위치 (하단 왼쪽) -->
-            <Rectangle Name="PositionC" Canvas.Left="80" Canvas.Bottom="0" Width="40" Height="40" 
+            <Rectangle Name="PositionC" Canvas.Left="80" Canvas.Top="90" Width="40" Height="40" 
                       Fill="LightGreen" Stroke="Green" StrokeThickness="2"/>
-            <TextBlock Canvas.Left="95" Canvas.Bottom="10" Text="S3" FontWeight="Bold" FontSize="14"/>
+            <TextBlock Canvas.Left="95" Canvas.Top="100" Text="S3" FontWeight="Bold" FontSize="14"/>
 
             <!-- D 위치 (하단 오른쪽) -->
-            <Rectangle Name="PositionD" Canvas.Left="320" Canvas.Bottom="0" Width="40" Height="40" 
+            <Rectangle Name="PositionD" Canvas.Left="320" Canvas.Top="90" Width="40" Height="40" 
                       Fill="LightGreen" Stroke="Green" StrokeThickness="2"/>
-            <TextBlock Canvas.Left="335" Canvas.Bottom="10" Text="S4" FontWeight="Bold" FontSize="14"/>
+            <TextBlock Canvas.Left="335" Canvas.Top="100" Text="S4" FontWeight="Bold" FontSize="14"/>
 
             <!-- 로봇 (이동할 객체) - 시작 위치: 중앙 -->
             <Canvas Name="Product" Canvas.Left="160" Canvas.Top="10">
