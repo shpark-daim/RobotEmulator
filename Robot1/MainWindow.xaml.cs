@@ -19,7 +19,7 @@ public partial class MainWindow : Window {
         Id: _robotId,
         Sequence: 0,
         EventSeq: 0,
-        Mode: RcpMode.A,
+        Mode: RcpMode.M,
         WorkingState: RcpWorkingState.I,
         ErrorCodes: [],
         CarrierPresent: false
@@ -110,16 +110,19 @@ public partial class MainWindow : Window {
 
         Dispatcher.Invoke(() => AddLog($"명령 수신 : {_seq++}"));
         var topic = e.ApplicationMessage.Topic;
-
+        // fixme : 이동 중에는 다른 cmd를 받지 않음.
         if (topic.Contains("/cmd/sync")) {
             var syncCommand = JsonSerializer.Deserialize<RcpSyncCommand>(message);
             await HandleSyncCommand(syncCommand);
         } else if (topic.Contains("/cmd/pick")) {
             var cmd = JsonSerializer.Deserialize<RcpPickCommand>(message);
-            await HandlePickCommand(cmd);
+            if (_rcpStatus.Mode == RcpMode.A && !_isMoving) await HandlePickCommand(cmd);
         } else if (topic.Contains("/cmd/place")) {
             var cmd = JsonSerializer.Deserialize<RcpPlaceCommand>(message);
-            await HandlePlaceCommand(cmd);
+            if (_rcpStatus.Mode == RcpMode.A && !_isMoving) await HandlePlaceCommand(cmd);
+        } else if (topic.Contains("/cmd/mode")) {
+            var cmd = JsonSerializer.Deserialize<RcpModeCommand>(message);
+            await HandleModeCommand(cmd);
         }
     }
 
@@ -163,7 +166,7 @@ public partial class MainWindow : Window {
     #region handle command
     private async Task HandleSyncCommand(RcpSyncCommand? cmd) {
         if (cmd is { }) {
-            await Dispatcher.InvokeAsync(() => AddLog($"Sync 명령 처리: Id={cmd.Id}, Sequence={cmd.Sequence}"));
+            await Dispatcher.InvokeAsync(() => AddLog($"Sync 명령 처리: Sequence={cmd.Sequence}"));
             if (cmd.Sequence > _rcpStatus.Sequence) {
                 _rcpStatus = _rcpStatus with { Sequence = cmd.Sequence - 1 };
             }
@@ -183,10 +186,12 @@ public partial class MainWindow : Window {
             var to = cmd.PickupId;
             await MoveRobotArm(from, to);
 
-            _rcpStatus = _rcpStatus with { WorkingState = RcpWorkingState.K };
-            await SendStatus();
             if (!_rcpStatus.CarrierPresent) {
                 await CreateProductAtPosition(to);
+                
+                _rcpStatus = _rcpStatus with { WorkingState = RcpWorkingState.K };
+                await SendStatus();
+                
                 await PickAnimation();
                 Dispatcher.Invoke(() => AddLog($"{to}에서 pick 완료"));
 
@@ -227,6 +232,25 @@ public partial class MainWindow : Window {
         }
     }
 
+    private async Task HandleModeCommand(RcpModeCommand? cmd) {
+        if (cmd is { }) {
+            await Dispatcher.InvokeAsync(() => AddLog($"Mode 명령 처리: Mode={cmd.Mode}"));
+            switch (cmd.Mode) {
+            case RcpMode.M:
+                if (_rcpStatus.ErrorCodes.Count == 0) await ChangeToManualMode();
+                break;
+            case RcpMode.A:
+                if (_rcpStatus.Mode == RcpMode.M) await ChangeToAutoMode();
+                break;
+            case RcpMode.E:
+                // todo?
+                break;
+            default:
+                Dispatcher.Invoke(() => AddLog($"알 수 없는 모드: {cmd.Mode}"));
+                break;
+            }
+        }
+    }
     #endregion handle command
 
     #region draw

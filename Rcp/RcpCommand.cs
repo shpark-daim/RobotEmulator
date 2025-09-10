@@ -13,10 +13,10 @@ public record RcpTaskCommand([property: JsonPropertyOrder(-1)] long RefSeq)
 public record RcpStatusCommand(string Id)
     : RcpCommand();
 
-public record RcpSyncCommand(string Id, long Sequence)
+public record RcpSyncCommand(long Sequence)
     : RcpCommand();
 
-public record RcpModeCommand(string Id, RcpMode Mode)
+public record RcpModeCommand(RcpMode Mode)
     : RcpCommand();
 
 public record RcpPickCommand(string PickupId)
