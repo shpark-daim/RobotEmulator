@@ -1,7 +1,7 @@
 ﻿<Window x:Class="Robot1.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="MQTT Robot Mover" Height="400" Width="450"
+        Title="MQTT Robot Mover" Height="400" Width="500"
         WindowStartupLocation="CenterScreen">
     <Grid>
         <Grid.RowDefinitions>
@@ -21,7 +21,7 @@
                 Background="White" BorderBrush="Orange"/>
             <Button Name="ManualButton" Content="Manual" Width="60" Height="20" Margin="5,0" 
                     Background="LightYellow" BorderBrush="Orange"/>
-            <Button Name="ErrorButton" Content="Error" Width="50" Height="20" Margin="5,0"
+            <Button Name="ErrorButton" Content="Error" Width="60" Height="20" Margin="5,0"
                     Background="LightPink" BorderBrush="Red"/>
         </StackPanel>
 
@@ -72,8 +72,8 @@
                          StrokeThickness="1"
                          Points="20,0 25,-3 25,17 20,20"/>
             </Canvas>
-            <!--<Canvas Name="RobotArm" Canvas.Left="145" Canvas.Top="10">
-                --><!-- 로봇 팔 베이스 (오른쪽에 고정) --><!--
+            <Canvas Name="RobotArm" Canvas.Left="145" Canvas.Top="10">
+                <!-- 로봇 팔 베이스 (오른쪽에 고정) --><!--
                 <Ellipse Name="RobotBase" 
                          Canvas.Left="220" Canvas.Top="50" 
                          Width="15" Height="15" 
@@ -138,8 +138,8 @@
                           Stroke="Black" 
                           StrokeThickness="2" 
                           StrokeEndLineCap="Round" Canvas.Left="-4" Canvas.Top="-4"/>
-                </Canvas>
-            </Canvas>-->
+                </Canvas>-->
+            </Canvas>
 
         </Canvas>
 
