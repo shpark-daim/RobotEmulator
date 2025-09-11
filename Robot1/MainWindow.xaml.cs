@@ -38,6 +38,10 @@ public partial class MainWindow : Window {
     private bool _isProcessingQueue = false;
     private int _duration = 5000;
     private Storyboard? _currentAnimation;
+    private TaskCompletionSource<bool>? _currentMoveTcs = null;
+    private DoubleAnimation? _currentAnimationX = null;
+    private DoubleAnimation? _currentAnimationY = null;
+    private DispatcherTimer? _positionUpdateTimer = null;
     public MainWindow() {
         InitializeComponent();
         _ = InitializePosition();
@@ -384,6 +388,7 @@ public partial class MainWindow : Window {
 
     private Task<bool> MoveProductToPosition(Point targetPos) {
         var tcs = new TaskCompletionSource<bool>();
+        _currentMoveTcs = tcs;
         Dispatcher.InvokeAsync(() => {
             var animationX = new DoubleAnimation {
                 From = Canvas.GetLeft(Product),
@@ -399,14 +404,53 @@ public partial class MainWindow : Window {
                 EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
             };
 
+            _currentAnimationX = animationX;
+            _currentAnimationY = animationY;
+
+            StartPositionUpdateTimer();
+
             animationX.Completed += (s, e) => {
-                tcs.SetResult(true);
+                if (tcs == _currentMoveTcs) {
+                    tcs.SetResult(true);
+                    _currentMoveTcs = null;
+                    _currentAnimationX = null;
+                    _currentAnimationY = null;
+                }
             };
 
             Product.BeginAnimation(Canvas.LeftProperty, animationX);
             Product.BeginAnimation(Canvas.TopProperty, animationY);
         });
         return tcs.Task;
+    }
+
+    private void StartPositionUpdateTimer() {
+        // 기존 타이머가 있다면 정지
+        StopPositionUpdateTimer();
+
+        _positionUpdateTimer = new DispatcherTimer();
+        _positionUpdateTimer.Interval = TimeSpan.FromMilliseconds(500); // 0.5초
+        _positionUpdateTimer.Tick += (s, e) => {
+            UpdateCurrentPosition();
+        };
+        _positionUpdateTimer.Start();
+    }
+
+    private void StopPositionUpdateTimer() {
+        if (_positionUpdateTimer != null) {
+            _positionUpdateTimer.Stop();
+            _positionUpdateTimer = null;
+        }
+    }
+
+    private void UpdateCurrentPosition() {
+        try {
+            var currentLeft = Canvas.GetLeft(Product);
+            var currentTop = Canvas.GetTop(Product);
+            _currentRobotArmPosition.Point = new Point(currentLeft, currentTop);
+        } catch (Exception ex) {
+            AddLog($"위치 업데이트 오류: {ex.Message}");
+        }
     }
 
     private async Task CreateProductAtPosition(string position) {
@@ -526,6 +570,45 @@ public partial class MainWindow : Window {
         });
         await downTask.Task;
     }
+
+    private void StopAnimationAtCurrentPosition() {
+        Dispatcher.Invoke(() => {
+            try {
+                // 현재 애니메이션된 위치 값 가져오기
+                var currentLeft = Canvas.GetLeft(Product);
+                var currentTop = Canvas.GetTop(Product);
+
+                // 애니메이션 즉시 중지
+                Product.BeginAnimation(Canvas.LeftProperty, null);
+                Product.BeginAnimation(Canvas.TopProperty, null);
+
+                // 현재 위치로 고정
+                Canvas.SetLeft(Product, currentLeft);
+                Canvas.SetTop(Product, currentTop);
+
+                // TaskCompletionSource에 취소 신호
+                if (_currentMoveTcs != null && !_currentMoveTcs.Task.IsCompleted) {
+                    _currentMoveTcs.SetResult(false); // 또는 SetCanceled()
+                    _currentMoveTcs = null;
+                }
+
+                // 참조 정리
+                _currentAnimationX = null;
+                _currentAnimationY = null;
+                _isMoving = false;
+
+            } catch (Exception ex) {
+                AddLog($"애니메이션 정지 중 오류: {ex.Message}");
+
+                // 강제로 상태 초기화
+                _isMoving = false;
+                _currentMoveTcs?.SetResult(false);
+                _currentMoveTcs = null;
+                _currentAnimationX = null;
+                _currentAnimationY = null;
+            }
+        });
+    }
     #endregion draw
 
     #region status report
@@ -581,19 +664,9 @@ public partial class MainWindow : Window {
     }
 
     private async Task ErrorButtonClicked(object sender, RoutedEventArgs e) {
-        await Dispatcher.InvokeAsync(async () => {
-            AddLog("Error 버튼 클릭 - Error 모드로 전환");
-
-            // 기존 애니메이션 완전히 중지
-            if (_currentAnimation != null) {
-                _currentAnimation.Stop();
-                _currentAnimation = null;
-            }
-            Product.BeginAnimation(Canvas.LeftProperty, null);
-            Product.BeginAnimation(Canvas.TopProperty, null);
-            _isMoving = false;
-            await ChangeToErrorMode();
-        });
+        AddLog("Error 버튼 클릭 - Error 모드로 전환");
+        StopAnimationAtCurrentPosition();
+        await ChangeToErrorMode();
     }
     #endregion buttons
 
