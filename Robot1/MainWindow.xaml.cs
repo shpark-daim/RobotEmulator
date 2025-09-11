@@ -35,7 +35,7 @@ public partial class MainWindow : Window {
     private CancellationTokenSource _operationCts = new();
 
     // runtime
-    private bool _isMoving = false;
+    private bool _isProcessing = false;
     private (string Id, Point Point) _currentRobotArmPosition;
     private RcpStatus<JsonElement?> _rcpStatus = new(
         Id: _robotId,
@@ -49,7 +49,7 @@ public partial class MainWindow : Window {
 
     public MainWindow() {
         InitializeComponent();
-        InitializePosition();
+        _ = InitializePosition();
         SetupMqttClient();
         AutoButton.Click += async (sender, e) => await AutoButtonClicked(sender, e);
         ManualButton.Click += async (sender, e) => await ManualButtonClicked(sender, e);
@@ -126,10 +126,10 @@ public partial class MainWindow : Window {
             await HandleSyncCommand(syncCommand);
         } else if (topic.Contains("/cmd/pick")) {
             var cmd = JsonSerializer.Deserialize<RcpPickCommand>(message);
-            if (_rcpStatus.Mode == RcpMode.A && !_isMoving) await HandlePickCommand(cmd);
+            if (_rcpStatus.Mode == RcpMode.A && !_isProcessing) await HandlePickCommand(cmd);
         } else if (topic.Contains("/cmd/place")) {
             var cmd = JsonSerializer.Deserialize<RcpPlaceCommand>(message);
-            if (_rcpStatus.Mode == RcpMode.A && !_isMoving) await HandlePlaceCommand(cmd);
+            if (_rcpStatus.Mode == RcpMode.A && !_isProcessing) await HandlePlaceCommand(cmd);
         } else if (topic.Contains("/cmd/mode")) {
             var cmd = JsonSerializer.Deserialize<RcpModeCommand>(message);
             await HandleModeCommand(cmd);
@@ -187,12 +187,9 @@ public partial class MainWindow : Window {
     }
 
     private async Task HandlePickCommand(RcpPickCommand? cmd) {
-        if (_isMoving) {
-            Dispatcher.Invoke(() => AddLog("로봇이 이동 중입니다. 명령을 무시합니다."));
-
-            return;
-        } else if (cmd is { }) {
+        if (cmd is { }) {
             try {
+                _isProcessing = true;
                 await Dispatcher.InvokeAsync(() => AddLog($"Pick 명령 처리: Pickup={cmd.PickupId}"));
 
                 var from = _home;
@@ -215,18 +212,15 @@ public partial class MainWindow : Window {
             } catch (Exception ex) {
                 await Dispatcher.InvokeAsync(() => AddLog($"Pick 명령 오류: {ex.Message}"));
             } finally {
-                _isMoving = false;
+                _isProcessing = false;
             }
         }
     }
 
     private async Task HandlePlaceCommand(RcpPlaceCommand? cmd) {
-        if (_isMoving) {
-            Dispatcher.Invoke(() => AddLog("로봇이 이동 중입니다. 명령을 무시합니다."));
-
-            return;
-        } else if (cmd is { }) {
+        if (cmd is { }) {
             try {
+                _isProcessing = true;
                 await Dispatcher.InvokeAsync(() => AddLog($"Place 명령 처리: Dropoff={cmd.DropoffId}"));
 
                 var from = _currentRobotArmPosition.Id;
@@ -255,7 +249,7 @@ public partial class MainWindow : Window {
             } catch (Exception ex) {
                 await Dispatcher.InvokeAsync(() => AddLog($"Place 명령 오류: {ex.Message}"));
             } finally {
-                _isMoving = false;
+                _isProcessing = false;
             }
         }
     }
@@ -317,7 +311,7 @@ public partial class MainWindow : Window {
             WorkingState = RcpWorkingState.I,
         };
         await SendStatus();
-        _isMoving = false;
+        _isProcessing = false;
     }
 
     private async Task ChangeToErrorMode() {
@@ -333,7 +327,7 @@ public partial class MainWindow : Window {
             ErrorCodes = [0, 1]
         };
         await SendStatus();
-        _isMoving = false;
+        _isProcessing = false;
     }
 
     private void StartPositionUpdateTimer() {
@@ -403,7 +397,7 @@ public partial class MainWindow : Window {
         }
 
         if (_currentRobotArmPosition.Point != toPos) {
-            _isMoving = true;
+            _isProcessing = true;
             Dispatcher.Invoke(() => AddLog($"로봇 팔 {from}에서 {to}로 이동 시작"));
 
             _rcpStatus = _rcpStatus with { WorkingState = RcpWorkingState.M };
@@ -614,12 +608,12 @@ public partial class MainWindow : Window {
 
                 _currentAnimationX = null;
                 _currentAnimationY = null;
-                _isMoving = false;
+                _isProcessing = false;
 
             } catch (Exception ex) {
                 AddLog($"애니메이션 정지 중 오류: {ex.Message}");
 
-                _isMoving = false;
+                _isProcessing = false;
                 _currentMoveTcs?.SetResult(false);
                 _currentMoveTcs = null;
                 _currentAnimationX = null;
