@@ -12,6 +12,7 @@ using RCP = Rcp.Rcp;
 namespace Robot1;
 public partial class MainWindow : Window {
     private IMqttClient? _mqttClient;
+    private bool _reconciled = false;
     private int _seq = 0;
     // fixme : target (load robot from config)
     private readonly static string _home = "home";
@@ -48,7 +49,7 @@ public partial class MainWindow : Window {
 
     public MainWindow() {
         InitializeComponent();
-        _ = InitializePosition();
+        InitializePosition();
         SetupMqttClient();
         AutoButton.Click += async (sender, e) => await AutoButtonClicked(sender, e);
         ManualButton.Click += async (sender, e) => await ManualButtonClicked(sender, e);
@@ -66,6 +67,7 @@ public partial class MainWindow : Window {
                 StatusText.Text = "연결됨";
                 StatusText.Foreground = System.Windows.Media.Brushes.Green;
                 AddLog("MQTT 브로커에 연결되었습니다.");
+                _reconciled = false;
             });
 
             var topic = RCP.MakeSubAllCmdTopic(_robotId);
@@ -152,7 +154,6 @@ public partial class MainWindow : Window {
                 lock (_statusLock) {
                     _lastStatusReportTime = DateTime.Now;
                 }
-                _rcpStatus = _rcpStatus with { Sequence = _rcpStatus.Sequence + 1 };
             }
         } catch (Exception ex) {
             AddLog($"메시지 큐 처리 오류: {ex.Message}");
@@ -179,6 +180,7 @@ public partial class MainWindow : Window {
             await Dispatcher.InvokeAsync(() => AddLog($"Sync 명령 처리: Sequence={cmd.Sequence}"));
             if (cmd.Sequence > _rcpStatus.Sequence) {
                 _rcpStatus = _rcpStatus with { Sequence = cmd.Sequence - 1 };
+                _reconciled = true;
             }
             await SendStatus();
         }
@@ -280,7 +282,7 @@ public partial class MainWindow : Window {
     #endregion handle command
 
     #region draw
-    private void InitializePosition() {
+    private async Task InitializePosition() {
         var initialRobotPosition = new Point(Canvas.GetLeft(RobotArm), Canvas.GetTop(RobotArm));
         _positions.TryAdd("home", new Point(initialRobotPosition.X + 10, initialRobotPosition.Y + 10));
         _positions.TryAdd("s5_0", new Point(Canvas.GetLeft(PositionA) + 20, Canvas.GetTop(PositionA) + 20));
@@ -288,6 +290,7 @@ public partial class MainWindow : Window {
         _positions.TryAdd("s3", new Point(Canvas.GetLeft(PositionC) + 20, Canvas.GetTop(PositionC) + 20));
         _positions.TryAdd("s4", new Point(Canvas.GetLeft(PositionD) + 20, Canvas.GetTop(PositionD) + 20));
         _currentRobotArmPosition = (_home, _positions["home"]);
+        await HideProduct();
     }
 
     private async Task ChangeToManualMode() {
@@ -658,8 +661,8 @@ public partial class MainWindow : Window {
                     .WithTopic(RCP.MakeStatusTopic(_robotId))
                     .WithPayload(JsonSerializer.Serialize(_rcpStatus))
                     .Build();
-
         await QueueMessage(msg);
+        if (_reconciled) _rcpStatus = _rcpStatus with { Sequence = _rcpStatus.Sequence + 1 };
     }
     #endregion status report
 
