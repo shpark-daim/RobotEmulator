@@ -122,16 +122,16 @@ public partial class MainWindow : Window {
         var topic = e.ApplicationMessage.Topic;
         // fixme : 이동 중에는 다른 cmd를 받지 않음.
         if (topic.Contains("/cmd/sync")) {
-            var syncCommand = JsonSerializer.Deserialize<RcpSyncCommand>(message);
+            var syncCommand = JsonSerializer.Deserialize(message, RcpContext.Default.RcpSyncCommand);
             await HandleSyncCommand(syncCommand);
         } else if (topic.Contains("/cmd/pick")) {
-            var cmd = JsonSerializer.Deserialize<RcpPickCommand>(message);
+            var cmd = JsonSerializer.Deserialize(message, RcpContext.Default.RcpPickCommand);
             if (_rcpStatus.Mode == RcpMode.A && !_isProcessing) await HandlePickCommand(cmd);
         } else if (topic.Contains("/cmd/place")) {
-            var cmd = JsonSerializer.Deserialize<RcpPlaceCommand>(message);
+            var cmd = JsonSerializer.Deserialize(message, RcpContext.Default.RcpPlaceCommand);
             if (_rcpStatus.Mode == RcpMode.A && !_isProcessing) await HandlePlaceCommand(cmd);
         } else if (topic.Contains("/cmd/mode")) {
-            var cmd = JsonSerializer.Deserialize<RcpModeCommand>(message);
+            var cmd = JsonSerializer.Deserialize(message, RcpContext.Default.RcpModeCommand);
             await HandleModeCommand(cmd);
         }
     }
