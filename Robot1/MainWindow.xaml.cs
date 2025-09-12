@@ -179,7 +179,10 @@ public partial class MainWindow : Window {
         if (cmd is { }) {
             await Dispatcher.InvokeAsync(() => AddLog($"Sync 명령 처리: Sequence={cmd.Sequence}"));
             if (cmd.Sequence > _rcpStatus.Sequence) {
-                _rcpStatus = _rcpStatus with { Sequence = cmd.Sequence - 1 };
+                _rcpStatus = _rcpStatus with { 
+                    Sequence = cmd.Sequence,
+                    EventSeq = cmd.Sequence
+                };
                 _reconciled = true;
             }
             await SendStatus();
@@ -199,13 +202,20 @@ public partial class MainWindow : Window {
                 if (!_rcpStatus.CarrierPresent) {
                     await CreateProduct(to);
 
-                    _rcpStatus = _rcpStatus with { WorkingState = RcpWorkingState.K };
+                    _rcpStatus = _rcpStatus with {
+                        EventSeq = _rcpStatus.Sequence,
+                        WorkingState = RcpWorkingState.K
+                    };
                     await SendStatus();
 
                     await PickAnimation(_operationCts.Token);
                 }
                 Dispatcher.Invoke(() => AddLog($"{to}에서 pick 완료"));
-                _rcpStatus = _rcpStatus with { WorkingState = RcpWorkingState.I, CarrierPresent = true };
+                _rcpStatus = _rcpStatus with {
+                    EventSeq = _rcpStatus.Sequence,
+                    WorkingState = RcpWorkingState.I,
+                    CarrierPresent = true
+                };
                 await SendStatus();
             } catch (OperationCanceledException) {
                 await Dispatcher.InvokeAsync(() => AddLog("Pick 명령이 취소되었습니다."));
@@ -228,7 +238,10 @@ public partial class MainWindow : Window {
                 await MoveAnimation(from, to, _operationCts.Token);
 
                 if (_rcpStatus.CarrierPresent) {
-                    _rcpStatus = _rcpStatus with { WorkingState = RcpWorkingState.L };
+                    _rcpStatus = _rcpStatus with {
+                        EventSeq = _rcpStatus.Sequence,
+                        WorkingState = RcpWorkingState.L
+                    };
                     await SendStatus();
 
                     await PlaceAnimation(_operationCts.Token);
@@ -236,13 +249,20 @@ public partial class MainWindow : Window {
                     await HideProduct();
                 }
                 Dispatcher.Invoke(() => AddLog($"{to}에 place 완료"));
-                _rcpStatus = _rcpStatus with { WorkingState = RcpWorkingState.M, CarrierPresent = false };
+                _rcpStatus = _rcpStatus with {
+                    EventSeq = _rcpStatus.Sequence,
+                    WorkingState = RcpWorkingState.M,
+                    CarrierPresent = false
+                };
                 await SendStatus();
 
                 // back to home
                 await MoveAnimation(to, _home, _operationCts.Token);
                 Dispatcher.Invoke(() => AddLog($"home 도착"));
-                _rcpStatus = _rcpStatus with { WorkingState = RcpWorkingState.I };
+                _rcpStatus = _rcpStatus with {
+                    EventSeq = _rcpStatus.Sequence,
+                    WorkingState = RcpWorkingState.I
+                };
                 await SendStatus();
             } catch (OperationCanceledException) {
                 await Dispatcher.InvokeAsync(() => AddLog("Place 명령이 취소되었습니다."));
@@ -295,7 +315,12 @@ public partial class MainWindow : Window {
             RightSide.Fill = new SolidColorBrush(Colors.LightYellow);
             return Task.CompletedTask;
         });
-        _rcpStatus = _rcpStatus with { Mode = RcpMode.M, WorkingState = RcpWorkingState.I, ErrorCodes = [] };
+        _rcpStatus = _rcpStatus with {
+            Mode = RcpMode.M,
+            EventSeq = _rcpStatus.Sequence,
+            WorkingState = RcpWorkingState.I,
+            ErrorCodes = []
+        };
         await SendStatus();
     }
 
@@ -308,6 +333,7 @@ public partial class MainWindow : Window {
         });
         _rcpStatus = _rcpStatus with {
             Mode = RcpMode.A,
+            EventSeq = _rcpStatus.Sequence,
             WorkingState = RcpWorkingState.I,
         };
         await SendStatus();
@@ -323,6 +349,7 @@ public partial class MainWindow : Window {
         });
         _rcpStatus = _rcpStatus with {
             Mode = RcpMode.E,
+            EventSeq = _rcpStatus.Sequence,
             WorkingState = RcpWorkingState.I,
             ErrorCodes = [0, 1]
         };
@@ -400,7 +427,10 @@ public partial class MainWindow : Window {
             _isProcessing = true;
             Dispatcher.Invoke(() => AddLog($"로봇 팔 {from}에서 {to}로 이동 시작"));
 
-            _rcpStatus = _rcpStatus with { WorkingState = RcpWorkingState.M };
+            _rcpStatus = _rcpStatus with {
+                EventSeq = _rcpStatus.Sequence,
+                WorkingState = RcpWorkingState.M
+            };
             await SendStatus();
             //var robotTask = MoveRobotArmToPosition(toPos.Value);
             await MoveProductAnimation(toPos.Value, ct);
