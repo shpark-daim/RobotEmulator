@@ -120,7 +120,6 @@ public partial class MainWindow : Window {
 
         Dispatcher.Invoke(() => AddLog($"명령 수신 : {_seq++}"));
         var topic = e.ApplicationMessage.Topic;
-        // fixme : 이동 중에는 다른 cmd를 받지 않음.
         if (topic.Contains("/cmd/sync")) {
             var syncCommand = JsonSerializer.Deserialize(message, RcpContext.Default.RcpSyncCommand);
             await HandleSyncCommand(syncCommand);
@@ -234,7 +233,7 @@ public partial class MainWindow : Window {
     private async Task HandlePlaceCommand(RcpPlaceCommand? cmd) {
         if (cmd is { }) {
             if (cmd.RefSeq != _rcpStatus.EventSeq) {
-                Dispatcher.Invoke(() => AddLog($"Ignore pick command: {cmd.RefSeq}, {_rcpStatus.Sequence}"));
+                Dispatcher.Invoke(() => AddLog($"Ignore place command: {cmd.RefSeq}, {_rcpStatus.Sequence}"));
                 return;
             }
             try {
@@ -487,7 +486,7 @@ public partial class MainWindow : Window {
                 EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
             };
 
-            upAnimation.Completed += (s, e) => tcs.SetResult(true);
+            upAnimation.Completed += (s, e) => tcs.TrySetResult(true);
 
             Product.BeginAnimation(Canvas.TopProperty, upAnimation);
         });
@@ -518,7 +517,7 @@ public partial class MainWindow : Window {
 
             animationY.Completed += (s, e) => {
                 if (tcs == _currentMoveTcs && !ct.IsCancellationRequested) {
-                    tcs.SetResult(true);
+                    tcs.TrySetResult(true);
                     _currentMoveTcs = null;
                     _currentAnimationY = null;
                 }
@@ -591,7 +590,7 @@ public partial class MainWindow : Window {
                 // registration.Dispose();
                 return;
             }
-            AddLog("물건 이동 중...");
+            AddLog("이동 중...");
             var animationX = new DoubleAnimation {
                 From = Canvas.GetLeft(Product),
                 To = targetPos.X - 10, // Product 중심을 목표점에 맞춤
@@ -613,7 +612,7 @@ public partial class MainWindow : Window {
 
             animationX.Completed += (s, e) => {
                 if (tcs == _currentMoveTcs && !ct.IsCancellationRequested) {
-                    tcs.SetResult(true);
+                    tcs.TrySetResult(true);
                     _currentMoveTcs = null;
                     _currentAnimationX = null;
                     _currentAnimationY = null;
@@ -640,7 +639,7 @@ public partial class MainWindow : Window {
                 Canvas.SetTop(Product, currentTop);
 
                 if (_currentMoveTcs != null && !_currentMoveTcs.Task.IsCompleted) {
-                    _currentMoveTcs.SetResult(false); // 또는 SetCanceled()
+                    _currentMoveTcs.TrySetResult(false); // 또는 SetCanceled()
                     _currentMoveTcs = null;
                 }
 
@@ -652,7 +651,7 @@ public partial class MainWindow : Window {
                 AddLog($"애니메이션 정지 중 오류: {ex.Message}");
 
                 _isProcessing = false;
-                _currentMoveTcs?.SetResult(false);
+                _currentMoveTcs?.TrySetResult(false);
                 _currentMoveTcs = null;
                 _currentAnimationX = null;
                 _currentAnimationY = null;
