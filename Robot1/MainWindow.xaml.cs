@@ -191,6 +191,10 @@ public partial class MainWindow : Window {
 
     private async Task HandlePickCommand(RcpPickCommand? cmd) {
         if (cmd is { }) {
+            if (cmd.RefSeq != _rcpStatus.EventSeq) {
+                Dispatcher.Invoke(() => AddLog($"Ignore pick command: {cmd.RefSeq}, {_rcpStatus.Sequence}"));
+                return;
+            }
             try {
                 _isProcessing = true;
                 await Dispatcher.InvokeAsync(() => AddLog($"Pick 명령 처리: Pickup={cmd.PickupId}"));
@@ -229,6 +233,10 @@ public partial class MainWindow : Window {
 
     private async Task HandlePlaceCommand(RcpPlaceCommand? cmd) {
         if (cmd is { }) {
+            if (cmd.RefSeq != _rcpStatus.EventSeq) {
+                Dispatcher.Invoke(() => AddLog($"Ignore pick command: {cmd.RefSeq}, {_rcpStatus.Sequence}"));
+                return;
+            }
             try {
                 _isProcessing = true;
                 await Dispatcher.InvokeAsync(() => AddLog($"Place 명령 처리: Dropoff={cmd.DropoffId}"));

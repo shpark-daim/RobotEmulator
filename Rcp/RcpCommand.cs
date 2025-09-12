@@ -19,12 +19,9 @@ public record RcpSyncCommand(long Sequence)
 public record RcpModeCommand(RcpMode Mode)
     : RcpCommand();
 
-public record RcpPickCommand(string PickupId)
-    : RcpCommand();
+public record RcpPickCommand(string PickupId, long RefSeq = 0)
+    : RcpTaskCommand(RefSeq);
 
-public record RcpPlaceCommand(string DropoffId)
-    : RcpCommand();
-
-public record RcpTransferCommand(string Id, long RefSeq, string Source, string Dest, string CarrierId, int Pickupslot = 0, int Dropoffslot = 0)
+public record RcpPlaceCommand(string DropoffId, long RefSeq = 0)
     : RcpTaskCommand(RefSeq);
 
