@@ -13,13 +13,15 @@ public record RcpTaskCommand([property: JsonPropertyOrder(-1)] long RefSeq)
 public record RcpStatusCommand(string Id)
     : RcpCommand();
 
-public record RcpSyncCommand(string Id, long Sequence)
+public record RcpSyncCommand(long Sequence)
     : RcpCommand();
 
-public record RcpModeCommand(string Id, RcpMode Mode)
+public record RcpModeCommand(RcpMode Mode)
     : RcpCommand();
 
-public record RcpTransferCommand(string Id, long RefSeq, string Source, string Dest, string CarrierId, int Pickupslot = 0, int Dropoffslot = 0)
+public record RcpPickCommand(string PickupId, long RefSeq = 0)
     : RcpTaskCommand(RefSeq);
 
-// todo : home, pick, place
+public record RcpPlaceCommand(string DropoffId, long RefSeq = 0)
+    : RcpTaskCommand(RefSeq);
+
