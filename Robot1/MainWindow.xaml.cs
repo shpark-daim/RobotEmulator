@@ -193,10 +193,10 @@ public partial class MainWindow : Window {
 
     private async Task HandlePickCommand(RcpPickCommand? cmd) {
         if (cmd is { }) {
-            if (cmd.RefSeq != _rcpStatus.EventSeq) {
-                Dispatcher.Invoke(() => AddLog($"Ignore pick command: {cmd.RefSeq}, {_rcpStatus.Sequence}"));
-                return;
-            }
+            //if (cmd.RefSeq != _rcpStatus.EventSeq) {
+            //    Dispatcher.Invoke(() => AddLog($"Ignore pick command: {cmd.RefSeq}, {_rcpStatus.Sequence}"));
+            //    return;
+            //}
             try {
                 _isProcessing = true;
                 await Dispatcher.InvokeAsync(() => AddLog($"Pick 명령 처리: Pickup={cmd.PickupId}"));
@@ -234,10 +234,10 @@ public partial class MainWindow : Window {
 
     private async Task HandlePlaceCommand(RcpPlaceCommand? cmd) {
         if (cmd is { }) {
-            if (cmd.RefSeq != _rcpStatus.EventSeq) {
-                Dispatcher.Invoke(() => AddLog($"Ignore place command: {cmd.RefSeq}, {_rcpStatus.Sequence}"));
-                return;
-            }
+            //if (cmd.RefSeq != _rcpStatus.EventSeq) {
+            //    Dispatcher.Invoke(() => AddLog($"Ignore place command: {cmd.RefSeq}, {_rcpStatus.Sequence}"));
+            //    return;
+            //}
             try {
                 _isProcessing = true;
                 await Dispatcher.InvokeAsync(() => AddLog($"Place 명령 처리: Dropoff={cmd.DropoffId}"));
@@ -307,9 +307,9 @@ public partial class MainWindow : Window {
     private async Task ChangeToManualMode() {
         await Dispatcher.InvokeAsync(() => {
             AddLog("Change to Manual Mode");
-            Front.Fill = new SolidColorBrush(Colors.LightYellow);
-            UpperSide.Fill = new SolidColorBrush(Colors.LightYellow);
-            RightSide.Fill = new SolidColorBrush(Colors.LightYellow);
+            Arm1.Stroke = new SolidColorBrush(Colors.Orange);
+            Arm2.Stroke = new SolidColorBrush(Colors.Orange);
+            GripperFork.Stroke = new SolidColorBrush(Colors.Orange);
             return Task.CompletedTask;
         });
         _rcpStatus = _rcpStatus with {
@@ -324,9 +324,9 @@ public partial class MainWindow : Window {
     private async Task ChangeToAutoMode() {
         await Dispatcher.InvokeAsync(() => {
             AddLog("Change to Auto Mode");
-            Front.Fill = new SolidColorBrush(Colors.SandyBrown);
-            UpperSide.Fill = new SolidColorBrush(Colors.BurlyWood);
-            RightSide.Fill = new SolidColorBrush(Colors.Tan);
+            Arm1.Stroke = new SolidColorBrush(Colors.SlateGray);
+            Arm2.Stroke = new SolidColorBrush(Colors.SlateGray);
+            GripperFork.Stroke = new SolidColorBrush(Colors.SlateGray);
         });
         _rcpStatus = _rcpStatus with {
             Mode = RcpMode.A,
@@ -340,9 +340,9 @@ public partial class MainWindow : Window {
     private async Task ChangeToErrorMode() {
         await Dispatcher.InvokeAsync(() => {
             AddLog("Change to Error Mode");
-            Front.Fill = new SolidColorBrush(Colors.LightPink);
-            UpperSide.Fill = new SolidColorBrush(Colors.LightPink);
-            RightSide.Fill = new SolidColorBrush(Colors.LightPink);
+            Arm1.Stroke = new SolidColorBrush(Colors.Red);
+            Arm2.Stroke = new SolidColorBrush(Colors.Red);
+            GripperFork.Stroke = new SolidColorBrush(Colors.Red);
         });
         _rcpStatus = _rcpStatus with {
             Mode = RcpMode.E,
