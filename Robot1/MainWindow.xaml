@@ -18,7 +18,7 @@
 
             <!-- Manual 및 Error 버튼 추가 -->
             <Button Name="AutoButton" Content="Auto" Width="60" Height="20" Margin="5,0" 
-                Background="White" BorderBrush="Orange"/>
+                Background="White" BorderBrush="SlateGray"/>
             <Button Name="ManualButton" Content="Manual" Width="60" Height="20" Margin="5,0" 
                     Background="LightYellow" BorderBrush="Orange"/>
             <Button Name="ErrorButton" Content="Error" Width="60" Height="20" Margin="5,0"
@@ -88,7 +88,7 @@
                       Canvas.Top="45"
                       X1="27.5" Y1="12.5" 
                       X2="0" Y2="0"
-                      Stroke="SlateGray" 
+                      Stroke="Orange" 
                       StrokeThickness="4" 
                       StrokeEndLineCap="Round"/>
 
@@ -108,7 +108,7 @@
                 Canvas.Top="0"
                 X1="320" Y1="45" 
                 X2="200" Y2="55"
-                Stroke="SlateGray" 
+                Stroke="Orange" 
                 StrokeThickness="4" 
                 StrokeEndLineCap="Round"/>
             
@@ -120,8 +120,8 @@
                         Stroke="Black" 
                         StrokeThickness="1" Canvas.Left="-4" Canvas.Top="-4" HorizontalAlignment="Left" VerticalAlignment="Center"/>
                 <!--그리퍼 집게 2-->
-                <Line X1="4" Y1="8" X2="4" Y2="16"
-                    Stroke="Black" 
+                <Line Name="GripperFork" X1="4" Y1="8" X2="4" Y2="16"
+                    Stroke="Orange" 
                     StrokeThickness="2" 
                     StrokeEndLineCap="Round" Canvas.Left="-4" Canvas.Top="-4"/>
             </Canvas>
