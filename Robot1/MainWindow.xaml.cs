@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Shapes;
 using System.Windows.Threading;
 using RCP = Rcp.Rcp;
 
@@ -27,16 +28,18 @@ public partial class MainWindow : Window {
     private readonly Queue<MqttApplicationMessage> _messageQueue = new();
 
     // animation
-    private readonly int _duration = 5000;
+    private readonly int _duration = 2000;
+    private readonly int _verticalMovementLength = 10;
+    private readonly int _centerOfProduct = 10;
     private DoubleAnimation? _currentAnimationX = null;
     private DoubleAnimation? _currentAnimationY = null;
     private DispatcherTimer? _positionUpdateTimer = null;
-    private TaskCompletionSource<bool>? _currentMoveTcs = null;
+    private TaskCompletionSource<bool>? _currentMovingRobotArmTcs = null;
     private CancellationTokenSource _operationCts = new();
 
     // runtime
     private bool _isProcessing = false;
-    private (string Id, Point Point) _currentRobotArmPosition;
+    private Point _currentRobotArmPosition;
     private RcpStatus<JsonElement?> _rcpStatus = new(
         Id: _robotId,
         Sequence: 0,
@@ -178,7 +181,7 @@ public partial class MainWindow : Window {
         if (cmd is { }) {
             await Dispatcher.InvokeAsync(() => AddLog($"Sync 명령 처리: Sequence={cmd.Sequence}"));
             if (cmd.Sequence > _rcpStatus.Sequence) {
-                _rcpStatus = _rcpStatus with { 
+                _rcpStatus = _rcpStatus with {
                     Sequence = cmd.Sequence,
                     EventSeq = cmd.Sequence
                 };
@@ -198,9 +201,8 @@ public partial class MainWindow : Window {
                 _isProcessing = true;
                 await Dispatcher.InvokeAsync(() => AddLog($"Pick 명령 처리: Pickup={cmd.PickupId}"));
 
-                var from = _home;
                 var to = cmd.PickupId;
-                await MoveAnimation(from, to, _operationCts.Token);
+                await MoveAnimation(to, false, _operationCts.Token);
 
                 if (!_rcpStatus.CarrierPresent) {
                     await CreateProduct(to);
@@ -240,9 +242,8 @@ public partial class MainWindow : Window {
                 _isProcessing = true;
                 await Dispatcher.InvokeAsync(() => AddLog($"Place 명령 처리: Dropoff={cmd.DropoffId}"));
 
-                var from = _currentRobotArmPosition.Id;
                 var to = cmd.DropoffId;
-                await MoveAnimation(from, to, _operationCts.Token);
+                await MoveAnimation(to, true, _operationCts.Token);
 
                 if (_rcpStatus.CarrierPresent) {
                     _rcpStatus = _rcpStatus with {
@@ -264,7 +265,7 @@ public partial class MainWindow : Window {
                 await SendStatus();
 
                 // back to home
-                await MoveAnimation(to, _home, _operationCts.Token);
+                await MoveAnimation(_home, false, _operationCts.Token);
                 Dispatcher.Invoke(() => AddLog($"home 도착"));
                 _rcpStatus = _rcpStatus with {
                     EventSeq = _rcpStatus.Sequence,
@@ -302,18 +303,7 @@ public partial class MainWindow : Window {
     }
     #endregion handle command
 
-    #region draw
-    private async Task InitializePosition() {
-        var initialRobotPosition = new Point(Canvas.GetLeft(RobotArm), Canvas.GetTop(RobotArm));
-        _positions.TryAdd("home", new Point(initialRobotPosition.X + 10, initialRobotPosition.Y + 10));
-        _positions.TryAdd("s5_0", new Point(Canvas.GetLeft(PositionA) + 20, Canvas.GetTop(PositionA) + 20));
-        _positions.TryAdd("s5_1", new Point(Canvas.GetLeft(PositionB) + 20, Canvas.GetTop(PositionB) + 20));
-        _positions.TryAdd("s3", new Point(Canvas.GetLeft(PositionC) + 20, Canvas.GetTop(PositionC) + 20));
-        _positions.TryAdd("s4", new Point(Canvas.GetLeft(PositionD) + 20, Canvas.GetTop(PositionD) + 20));
-        _currentRobotArmPosition = (_home, _positions["home"]);
-        await HideProduct();
-    }
-
+    #region change mode
     private async Task ChangeToManualMode() {
         await Dispatcher.InvokeAsync(() => {
             AddLog("Change to Manual Mode");
@@ -363,6 +353,19 @@ public partial class MainWindow : Window {
         await SendStatus();
         _isProcessing = false;
     }
+    #endregion change mode
+
+    #region position
+    private async Task InitializePosition() {
+        var initialRobotPosition = new Point(Canvas.GetLeft(Arm2) + Arm2.X2, Canvas.GetTop(Arm2) + Arm2.Y2);
+        _positions.TryAdd("home", new Point(initialRobotPosition.X, initialRobotPosition.Y));
+        _positions.TryAdd("s5_0", new Point(Canvas.GetLeft(PositionA) + 20, Canvas.GetTop(PositionA) + 20));
+        _positions.TryAdd("s5_1", new Point(Canvas.GetLeft(PositionB) + 20, Canvas.GetTop(PositionB) + 20));
+        _positions.TryAdd("s3", new Point(Canvas.GetLeft(PositionC) + 20, Canvas.GetTop(PositionC) + 20));
+        _positions.TryAdd("s4", new Point(Canvas.GetLeft(PositionD) + 20, Canvas.GetTop(PositionD) + 20));
+        _currentRobotArmPosition = _positions["home"];
+        await HideProduct();
+    }
 
     private void StartPositionUpdateTimer() {
         // 기존 타이머가 있다면 정지
@@ -386,9 +389,9 @@ public partial class MainWindow : Window {
 
     private void UpdateCurrentPosition() {
         try {
-            var currentLeft = Canvas.GetLeft(Product);
-            var currentTop = Canvas.GetTop(Product);
-            _currentRobotArmPosition.Point = new Point(currentLeft, currentTop);
+            var currentLeft = Canvas.GetLeft(Arm2);
+            var currentTop = Canvas.GetTop(Arm2);
+            _currentRobotArmPosition = new Point(currentLeft, currentTop);
         } catch (Exception ex) {
             AddLog($"위치 업데이트 오류: {ex.Message}");
         }
@@ -402,8 +405,8 @@ public partial class MainWindow : Window {
                 Product.BeginAnimation(Canvas.LeftProperty, null);
                 Product.BeginAnimation(Canvas.TopProperty, null);
 
-                var newLeft = pos.Value.X - 10;
-                var newTop = pos.Value.Y - 10;
+                var newLeft = pos.Value.X - _centerOfProduct;
+                var newTop = pos.Value.Y + _centerOfProduct;
                 Canvas.SetLeft(Product, newLeft);
                 Canvas.SetTop(Product, newTop);
                 Product.Visibility = Visibility.Visible;
@@ -420,95 +423,93 @@ public partial class MainWindow : Window {
     private Point? GetPositionFromUI(string position) {
         return _positions.TryGetValue(position, out Point value) ? value : null;
     }
+    #endregion position
 
-    private async Task MoveAnimation(string from, string to, CancellationToken ct = default) {
-        var fromPos = GetPositionFromUI(from);
+    #region draw
+    private async Task MoveAnimation(string to, bool withProduct, CancellationToken ct = default) {
         var toPos = GetPositionFromUI(to);
 
-        if (fromPos == null || toPos == null) {
-            Dispatcher.Invoke(() => AddLog($"알 수 없는 위치: {from} 또는 {to}"));
+        if (toPos == null) {
+            Dispatcher.Invoke(() => AddLog($"알 수 없는 위치: {to}"));
             return;
         }
 
-        if (_currentRobotArmPosition.Point != toPos) {
+        if (_currentRobotArmPosition != toPos) {
             _isProcessing = true;
-            Dispatcher.Invoke(() => AddLog($"로봇 팔 {from}에서 {to}로 이동 시작"));
+            Dispatcher.Invoke(() => AddLog($"로봇 팔 {to}로 이동 시작"));
 
             _rcpStatus = _rcpStatus with {
                 EventSeq = _rcpStatus.Sequence,
                 WorkingState = RcpWorkingState.M
             };
             await SendStatus();
-            //var robotTask = MoveRobotArmToPosition(toPos.Value);
-            await MoveProductAnimation(toPos.Value, ct);
 
-            //await Task.WhenAll(/*robotTask, */productTask);
-            _currentRobotArmPosition = (to, toPos.Value);
+            var armToPos = new Point(toPos.Value.X, toPos.Value.Y - _verticalMovementLength);
+            var productTask = withProduct ? MoveProductAnimation(toPos.Value, ct) : Task.FromResult(true);
+            var armTask = MoveRobotArmAnimation(armToPos, ct);
+            var results = await Task.WhenAll(armTask, productTask);
         }
 
         Dispatcher.Invoke(() => AddLog($"로봇 팔 {to} 도착"));
     }
 
     private async Task PickAnimation(CancellationToken ct = default) {
-        var tcs = new TaskCompletionSource<bool>();
-        _currentMoveTcs = tcs;
+        var downPoint = new Point(_currentRobotArmPosition.X, _currentRobotArmPosition.Y + _verticalMovementLength);
+        await MoveRobotArmAnimation(downPoint, ct);
 
-        ct.Register(() => tcs.TrySetCanceled(ct));
+        var upPoint = new Point(_currentRobotArmPosition.X, _currentRobotArmPosition.Y - _verticalMovementLength);
+        var productTask = PickingUpAnimation(ct);
+        var armTask = MoveRobotArmAnimation(upPoint, ct);
+        await Task.WhenAll(armTask, productTask);
+    }
 
+    private Task<bool> PickingUpAnimation(CancellationToken ct) {
         Dispatcher.Invoke(() => {
             if (ct.IsCancellationRequested) {
-                tcs.TrySetCanceled(ct);
                 return;
             }
             AddLog("물건 픽업 중...");
 
-            // RobotArm 애니메이션 (선택 사항)
-            // 1. Product가 아래로 내려가는 애니메이션 (집는 동작)
-            //var downAnimation = new DoubleAnimation {
-            //    From = Canvas.GetTop(Product),
-            //    To = Canvas.GetTop(Product) + 15,
-            //    Duration = TimeSpan.FromMilliseconds(duration),
-            //    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-            //};
-            //var downTask = new TaskCompletionSource<bool>();
-            //downAnimation.Completed += (s, e) => downTask.SetResult(true);
-            //Product.BeginAnimation(Canvas.TopProperty, downAnimation);
-            //await downTask.Task;
-
-            // 2. 잠시 대기 (집는 시간)
-            //await Task.Delay(duration);
-
-            // 3. Product가 위로 올라가는 애니메이션
-            var upAnimation = new DoubleAnimation {
+            var animationY = new DoubleAnimation {
                 From = Canvas.GetTop(Product),
-                To = Canvas.GetTop(Product) - 20,
+                To = Canvas.GetTop(Product) - _verticalMovementLength,
                 Duration = TimeSpan.FromMilliseconds(_duration),
                 EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
             };
 
-            upAnimation.Completed += (s, e) => tcs.TrySetResult(true);
+            _currentAnimationY = animationY;
 
-            Product.BeginAnimation(Canvas.TopProperty, upAnimation);
+            animationY.Completed += (s, e) => {
+                if (!ct.IsCancellationRequested) {
+                    _currentAnimationY = null;
+                }
+            };
+
+            Product.BeginAnimation(Canvas.TopProperty, animationY);
         });
-        await tcs.Task;
+        return Task.FromResult(true);
     }
 
     private async Task PlaceAnimation(CancellationToken ct = default) {
-        var tcs = new TaskCompletionSource<bool>();
-        _currentMoveTcs = tcs;
+        var downPoint = new Point(_currentRobotArmPosition.X, _currentRobotArmPosition.Y + _verticalMovementLength);
+        var productTask = PlacingAnimation(ct);
+        var armTask = MoveRobotArmAnimation(downPoint, ct);
+        await Task.WhenAll(armTask, productTask);
 
-        ct.Register(() => tcs.TrySetCanceled(ct));
+        var upPoint = new Point(_currentRobotArmPosition.X, _currentRobotArmPosition.Y - _verticalMovementLength);
+        await MoveRobotArmAnimation(upPoint, ct);
+    }
 
+    private Task<bool> PlacingAnimation(CancellationToken ct) {
         Dispatcher.Invoke(() => {
             if (ct.IsCancellationRequested) {
-                tcs.TrySetCanceled(ct);
                 return;
             }
             AddLog("물건 배치 중...");
 
             var animationY = new DoubleAnimation {
                 From = Canvas.GetTop(Product),
-                To = Canvas.GetTop(Product) + 20,
+                To = Canvas.GetTop(Product) + _verticalMovementLength,
                 Duration = TimeSpan.FromMilliseconds(_duration),
                 EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
             };
@@ -516,81 +517,88 @@ public partial class MainWindow : Window {
             _currentAnimationY = animationY;
 
             animationY.Completed += (s, e) => {
-                if (tcs == _currentMoveTcs && !ct.IsCancellationRequested) {
-                    tcs.TrySetResult(true);
-                    _currentMoveTcs = null;
+                if (!ct.IsCancellationRequested) {
                     _currentAnimationY = null;
                 }
             };
 
             Product.BeginAnimation(Canvas.TopProperty, animationY);
-
-            // 2. 잠시 대기 (놓는 시간)
-            //await Task.Delay(5000);
-
-            // RobotArm 애니메이션 (선택 사항)
-            // 3. Product가 다시 위로 올라가는 애니메이션
-            //var upAnimation = new DoubleAnimation {
-            //    From = Canvas.GetTop(Product),
-            //    To = Canvas.GetTop(Product) - 15,
-            //    Duration = TimeSpan.FromSeconds(1.0),
-            //    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
-            //};
-
-            //var upTask = new TaskCompletionSource<bool>();
-            //upAnimation.Completed += (s, e) => upTask.SetResult(true);
-
-            //Product.BeginAnimation(Canvas.TopProperty, upAnimation);
-            //await upTask.Task;
         });
-        await tcs.Task;
+        return Task.FromResult(true);
     }
 
-    //private Task<bool> MoveRobotArmToPosition(Point targetPos) {
-    //    var tcs = new TaskCompletionSource<bool>();
-    //    Dispatcher.InvokeAsync(() => {
-    //        var currentGripperPos = new Point(
-    //        Canvas.GetLeft(RobotArm) + 80, // Gripper의 현재 X
-    //        Canvas.GetTop(RobotArm) + 55   // Gripper의 현재 Y
-    //    );
-
-    //        var animationX = new DoubleAnimation {
-    //            From = Canvas.GetLeft(RobotArm),
-    //            To = targetPos.X - 80,
-    //            Duration = TimeSpan.FromSeconds(2.5),
-    //            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
-    //        };
-
-    //        var animationY = new DoubleAnimation {
-    //            From = Canvas.GetTop(RobotArm),
-    //            To = targetPos.Y - 55,
-    //            Duration = TimeSpan.FromSeconds(2.5),
-    //            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
-    //        };
-
-    //        animationX.Completed += (s, e) => {
-    //            tcs.SetResult(true);
-    //        };
-
-    //        RobotArm.BeginAnimation(Canvas.LeftProperty, animationX);
-    //        RobotArm.BeginAnimation(Canvas.TopProperty, animationY);
-    //    });
-    //    return tcs.Task;
-    //}
-
-    private Task<bool> MoveProductAnimation(Point targetPos, CancellationToken ct) {
+    private Task<bool> MoveRobotArmAnimation(Point targetPos, CancellationToken ct) {
         var tcs = new TaskCompletionSource<bool>();
-        _currentMoveTcs = tcs;
+        _currentMovingRobotArmTcs = tcs;
 
         ct.Register(() => tcs.TrySetCanceled(ct));
 
-        Dispatcher.Invoke(() => {
+        Dispatcher.InvokeAsync(() => {
             if (ct.IsCancellationRequested) {
                 tcs.TrySetCanceled(ct);
                 // registration.Dispose();
                 return;
             }
-            AddLog("이동 중...");
+            AddLog("Moving RobotArm...");
+
+            double newX2 = targetPos.X - Canvas.GetLeft(Arm2); // targetPos.X - 190
+            double newY2 = targetPos.Y - Canvas.GetTop(Arm2);  // targetPos.Y - 45
+
+            // Arm2 끝점 애니메이션
+            var arm2EndX = new DoubleAnimation {
+                From = Arm2.X2,
+                To = newX2,
+                Duration = TimeSpan.FromMilliseconds(_duration),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+            };
+
+            var arm2EndY = new DoubleAnimation {
+                From = Arm2.Y2,
+                To = newY2,
+                Duration = TimeSpan.FromMilliseconds(_duration),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+            };
+
+            // 그리퍼를 목표 위치로
+            var gripperX = new DoubleAnimation {
+                From = Canvas.GetLeft(Gripper),
+                To = targetPos.X,
+                Duration = TimeSpan.FromMilliseconds(_duration),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+            };
+
+            var gripperY = new DoubleAnimation {
+                From = Canvas.GetTop(Gripper),
+                To = targetPos.Y,
+                Duration = TimeSpan.FromMilliseconds(_duration),
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+            };
+
+            arm2EndX.Completed += (s, e) => {
+                if (tcs == _currentMovingRobotArmTcs && !ct.IsCancellationRequested) {
+                    tcs.TrySetResult(true);
+                    _currentMovingRobotArmTcs = null;
+                }
+            };
+
+            // 애니메이션 실행
+            Arm2.BeginAnimation(Line.X2Property, arm2EndX);
+            Arm2.BeginAnimation(Line.Y2Property, arm2EndY);
+            Gripper.BeginAnimation(Canvas.LeftProperty, gripperX);
+            Gripper.BeginAnimation(Canvas.TopProperty, gripperY);
+
+        });
+        _currentRobotArmPosition = targetPos;
+        return tcs.Task;
+    }
+
+    private Task<bool> MoveProductAnimation(Point targetPos, CancellationToken ct) {
+        Dispatcher.Invoke(() => {
+            if (ct.IsCancellationRequested) {
+                // registration.Dispose();
+                return;
+            }
+            AddLog("Moving Product...");
             var animationX = new DoubleAnimation {
                 From = Canvas.GetLeft(Product),
                 To = targetPos.X - 10, // Product 중심을 목표점에 맞춤
@@ -608,12 +616,11 @@ public partial class MainWindow : Window {
             _currentAnimationX = animationX;
             _currentAnimationY = animationY;
 
-            StartPositionUpdateTimer();
+            // StartPositionUpdateTimer();
 
             animationX.Completed += (s, e) => {
-                if (tcs == _currentMoveTcs && !ct.IsCancellationRequested) {
-                    tcs.TrySetResult(true);
-                    _currentMoveTcs = null;
+                if (!ct.IsCancellationRequested) {
+                    //_currentMovingRobotArmTcs = null;
                     _currentAnimationX = null;
                     _currentAnimationY = null;
                 }
@@ -622,25 +629,36 @@ public partial class MainWindow : Window {
             Product.BeginAnimation(Canvas.LeftProperty, animationX);
             Product.BeginAnimation(Canvas.TopProperty, animationY);
         });
-        return tcs.Task;
+        return Task.FromResult(true);
     }
 
     private void StopAnimationAtCurrentPosition() {
         Dispatcher.Invoke(() => {
             try {
-                var currentLeft = Canvas.GetLeft(Product);
-                var currentTop = Canvas.GetTop(Product);
+                var productCurLeft = Canvas.GetLeft(Product);
+                var productCurTop = Canvas.GetTop(Product);
+                var armCurLeft = Arm2.X2;
+                var armCurTop = Arm2.Y2;
+                var gripperCurLeft = Canvas.GetLeft(Gripper);
+                var gripperCurTop = Canvas.GetTop(Gripper);
 
-                // 애니메이션 즉시 중지
                 Product.BeginAnimation(Canvas.LeftProperty, null);
                 Product.BeginAnimation(Canvas.TopProperty, null);
+                Arm2.BeginAnimation(Line.X2Property, null);
+                Arm2.BeginAnimation(Line.Y2Property, null);
+                Gripper.BeginAnimation(Canvas.LeftProperty, null);
+                Gripper.BeginAnimation(Canvas.TopProperty, null);
 
-                Canvas.SetLeft(Product, currentLeft);
-                Canvas.SetTop(Product, currentTop);
+                Canvas.SetLeft(Product, productCurLeft);
+                Canvas.SetTop(Product, productCurTop);
+                Arm2.X2 = armCurLeft;
+                Arm2.Y2 = armCurTop;
+                Canvas.SetLeft(Gripper, gripperCurLeft);
+                Canvas.SetTop(Gripper, gripperCurTop);
 
-                if (_currentMoveTcs != null && !_currentMoveTcs.Task.IsCompleted) {
-                    _currentMoveTcs.TrySetResult(false); // 또는 SetCanceled()
-                    _currentMoveTcs = null;
+                if (_currentMovingRobotArmTcs != null && !_currentMovingRobotArmTcs.Task.IsCompleted) {
+                    _currentMovingRobotArmTcs.TrySetResult(false); // 또는 SetCanceled()
+                    _currentMovingRobotArmTcs = null;
                 }
 
                 _currentAnimationX = null;
@@ -651,8 +669,8 @@ public partial class MainWindow : Window {
                 AddLog($"애니메이션 정지 중 오류: {ex.Message}");
 
                 _isProcessing = false;
-                _currentMoveTcs?.TrySetResult(false);
-                _currentMoveTcs = null;
+                _currentMovingRobotArmTcs?.TrySetResult(false);
+                _currentMovingRobotArmTcs = null;
                 _currentAnimationX = null;
                 _currentAnimationY = null;
             }
