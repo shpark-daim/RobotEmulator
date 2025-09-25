@@ -70,7 +70,6 @@ public partial class MainWindow : Window {
                 StatusText.Text = "연결됨";
                 StatusText.Foreground = System.Windows.Media.Brushes.Green;
                 AddLog("MQTT 브로커에 연결되었습니다.");
-                _reconciled = false;
             });
 
             var topic = RCP.MakeSubAllCmdTopic(_robotId);
