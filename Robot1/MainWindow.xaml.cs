@@ -2,6 +2,7 @@
 using Rcp;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -707,7 +708,7 @@ public partial class MainWindow : Window {
         // rcpStatus stale?
         var msg = new MqttApplicationMessageBuilder()
                     .WithTopic(RCP.MakeStatusTopic(_robotId))
-                    .WithPayload(JsonSerializer.Serialize(_rcpStatus))
+                    .WithPayload(JsonSerializer.Serialize(_rcpStatus, s_jsonOptions))
                     .Build();
         await QueueMessage(msg);
         if (_reconciled) _rcpStatus = _rcpStatus with { Sequence = _rcpStatus.Sequence + 1 };
@@ -750,4 +751,11 @@ public partial class MainWindow : Window {
             scrollViewer.ScrollToEnd();
         }
     }
+
+    private static readonly JsonSerializerOptions s_jsonOptions = new() {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = false,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        Converters = { new JsonStringEnumConverter() }
+    };
 }
