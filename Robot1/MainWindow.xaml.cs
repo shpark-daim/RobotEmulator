@@ -48,7 +48,8 @@ public partial class MainWindow : Window {
         Mode: RcpMode.M,
         WorkingState: RcpWorkingState.I,
         ErrorCodes: [],
-        CarrierPresent: false
+        CarrierPresent: false,
+        CarrierIds: null
     );
 
     public MainWindow() {
