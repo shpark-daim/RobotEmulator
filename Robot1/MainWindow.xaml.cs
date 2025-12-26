@@ -49,7 +49,24 @@ public partial class MainWindow : Window {
         WorkingState: RcpWorkingState.I,
         ErrorCodes: [],
         CarrierPresent: false,
-        CarrierIds: null
+        CarrierIds: [
+            new(
+                DropoffId: "s5_0",
+                BarcodeValue: ""
+            ),
+            new(
+                DropoffId: "s5_1",
+                BarcodeValue: ""
+            ),
+            new(
+                DropoffId: "s3",
+                BarcodeValue: ""
+            ),
+            new(
+                DropoffId: "s4",
+                BarcodeValue: ""
+            ),
+        ]
     );
 
     public MainWindow() {
@@ -59,6 +76,7 @@ public partial class MainWindow : Window {
         AutoButton.Click += async (sender, e) => await AutoButtonClicked(sender, e);
         ManualButton.Click += async (sender, e) => await ManualButtonClicked(sender, e);
         ErrorButton.Click += async (sender, e) => await ErrorButtonClicked(sender, e);
+        InitializeButton.Click += async (sender, e) => await InitializeButtonClicked(sender, e);
     }
 
     #region mqtt
@@ -281,6 +299,14 @@ public partial class MainWindow : Window {
                 _isProcessing = false;
             }
         }
+
+        string GetProductId(string to) {
+            if (to == "s5_0") return TextBoxB.Text;
+            if (to == "s5_1") return TextBoxA.Text;
+            if (to == "s3") return TextBoxC.Text;
+            if (to == "s4") return TextBoxD.Text;
+            return "";
+        }
     }
 
     private async Task HandleModeCommand(RcpModeCommand? cmd) {
@@ -360,8 +386,8 @@ public partial class MainWindow : Window {
     private async Task InitializePosition() {
         var initialRobotPosition = new Point(Canvas.GetLeft(Arm2) + Arm2.X2, Canvas.GetTop(Arm2) + Arm2.Y2);
         _positions.TryAdd("home", new Point(initialRobotPosition.X, initialRobotPosition.Y));
-        _positions.TryAdd("s5_0", new Point(Canvas.GetLeft(PositionA) + 20, Canvas.GetTop(PositionA) + 20));
-        _positions.TryAdd("s5_1", new Point(Canvas.GetLeft(PositionB) + 20, Canvas.GetTop(PositionB) + 20));
+        _positions.TryAdd("s5_0", new Point(Canvas.GetLeft(PositionB) + 20, Canvas.GetTop(PositionB) + 20));
+        _positions.TryAdd("s5_1", new Point(Canvas.GetLeft(PositionA) + 20, Canvas.GetTop(PositionA) + 20));
         _positions.TryAdd("s3", new Point(Canvas.GetLeft(PositionC) + 20, Canvas.GetTop(PositionC) + 20));
         _positions.TryAdd("s4", new Point(Canvas.GetLeft(PositionD) + 20, Canvas.GetTop(PositionD) + 20));
         _currentRobotArmPosition = _positions["home"];
@@ -716,7 +742,7 @@ public partial class MainWindow : Window {
     }
     #endregion status report
 
-    #region buttons
+    #region robot mode buttons
     private async Task AutoButtonClicked(object sender, RoutedEventArgs e) {
         await Dispatcher.InvokeAsync(() => {
             AddLog("Auto 버튼 클릭 - Auto 모드로 전환");
@@ -741,7 +767,147 @@ public partial class MainWindow : Window {
         await ChangeToErrorMode();
         _operationCts = new CancellationTokenSource();
     }
-    #endregion buttons
+
+    private async Task InitializeButtonClicked(object sender, RoutedEventArgs e) {
+        AddLog("Initialize 버튼 클릭 - 초기 모드로 전환");
+
+        await HideProduct();
+        await MoveAnimation(_home, false, _operationCts.Token);
+        _rcpStatus = _rcpStatus with {
+            EventSeq = _rcpStatus.Sequence,
+            WorkingState = RcpWorkingState.I
+        };
+        await SendStatus();
+        await ChangeToManualMode();
+        _operationCts = new CancellationTokenSource();
+    }
+    #endregion robot mode buttons
+
+    #region box install remove buttons
+    private readonly Dictionary<string, Canvas?> _positionProducts = new() {
+        { "s5_1", null },
+        { "s5_0", null },
+        { "s3", null },
+        { "s4", null }
+    };
+
+    private void BtnAddA_Click(object sender, RoutedEventArgs e) {
+
+        AddProductToPosition("s5_1", TextBoxA.Text);
+    }
+
+    private void BtnAddB_Click(object sender, RoutedEventArgs e) {
+        AddProductToPosition("s5_0", TextBoxB.Text);
+    }
+
+    private void BtnAddC_Click(object sender, RoutedEventArgs e) {
+        AddProductToPosition("s3", TextBoxC.Text);
+    }
+
+    private void BtnAddD_Click(object sender, RoutedEventArgs e) {
+        AddProductToPosition("s4", TextBoxD.Text);
+    }
+
+    private void BtnRemoveA_Click(object sender, RoutedEventArgs e) {
+        RemoveProductFromPosition("s5_1");
+    }
+
+    private void BtnRemoveB_Click(object sender, RoutedEventArgs e) {
+        RemoveProductFromPosition("s5_0");
+    }
+
+    private void BtnRemoveC_Click(object sender, RoutedEventArgs e) {
+        RemoveProductFromPosition("s3");
+    }
+
+    private void BtnRemoveD_Click(object sender, RoutedEventArgs e) {
+        RemoveProductFromPosition("s4");
+    }
+
+    private void AddProductToPosition(string position, string productId) {
+        if (string.IsNullOrWhiteSpace(productId)) {
+            MessageBox.Show("Product ID를 입력해주세요.", "입력 오류", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        // 이미 해당 위치에 Product가 있으면 제거
+        if (_positionProducts[position] != null) {
+            RemoveProductFromPosition(position);
+        }
+
+        // 새로운 Product Canvas 생성
+        Canvas product = CreateProductBox();
+
+        // 위치 설정
+        var pos = GetPositionFromUI(position);
+        if (pos.HasValue) {
+            Canvas.SetLeft(product, pos.Value.X);
+            Canvas.SetTop(product, pos.Value.Y);
+        }
+
+        // MoveCanvas에 추가
+        MoveCanvas.Children.Add(product);
+        _positionProducts[position] = product;
+        var carrier = _rcpStatus.CarrierIds!.FirstOrDefault(c => c.DropoffId == position);
+        if (carrier != null) {
+            _rcpStatus = _rcpStatus with {
+                CarrierIds = [.. _rcpStatus.CarrierIds!.Select(c => c.DropoffId == position ? c with { BarcodeValue = productId } : c)]
+            };
+        }
+    }
+
+    private void RemoveProductFromPosition(string position) {
+        if (_positionProducts[position] != null) {
+            MoveCanvas.Children.Remove(_positionProducts[position]);
+            _positionProducts[position] = null;
+            var carrier = _rcpStatus.CarrierIds!.FirstOrDefault(c => c.DropoffId == position);
+            if (carrier != null) {
+                _rcpStatus = _rcpStatus with {
+                    CarrierIds = [.. _rcpStatus.CarrierIds!.Select(c => c.DropoffId == position ? c with { BarcodeValue = "" } : c)]
+                };
+            }
+
+        }
+    }
+
+    private static Canvas CreateProductBox() {
+        Canvas product = new();
+
+        // 메인 박스 면
+        Rectangle front = new() {
+            Name = "Front",
+            Width = 20,
+            Height = 20,
+            Fill = new SolidColorBrush(Colors.SandyBrown),
+            Stroke = new SolidColorBrush(Colors.SaddleBrown),
+            StrokeThickness = 1
+        };
+
+        // 상단 면 (3D 효과)
+        Polygon upperSide = new() {
+            Name = "UpperSide",
+            Fill = new SolidColorBrush(Colors.BurlyWood),
+            Stroke = new SolidColorBrush(Colors.SaddleBrown),
+            StrokeThickness = 1,
+            Points = new PointCollection { new Point(0, 0), new Point(5, -3), new Point(25, -3), new Point(20, 0) }
+        };
+
+        // 오른쪽 면 (3D 효과)
+        Polygon rightSide = new() {
+            Name = "RightSide",
+            Fill = new SolidColorBrush(Colors.Tan),
+            Stroke = new SolidColorBrush(Colors.SaddleBrown),
+            StrokeThickness = 1,
+            Points = new PointCollection { new Point(20, 0), new Point(25, -3), new Point(25, 17), new Point(20, 20) }
+        };
+
+        product.Children.Add(front);
+        product.Children.Add(upperSide);
+        product.Children.Add(rightSide);
+
+        return product;
+    }
+    #endregion box install remove buttons
 
     private void AddLog(string message) {
         var timestamp = DateTime.Now.ToString("HH:mm:ss");
