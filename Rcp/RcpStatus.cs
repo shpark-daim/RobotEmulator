@@ -1,5 +1,6 @@
 ﻿using Daim.Xms.General;
 using Daim.Xms.Xcp;
+using System.Threading;
 
 namespace Rcp;
 public record RcpStatus<TCustom>(
@@ -9,7 +10,8 @@ public record RcpStatus<TCustom>(
     RcpMode Mode,
     RcpWorkingState WorkingState,
     IReadOnlyList<int> ErrorCodes,
-    bool CarrierPresent
+    bool CarrierPresent,
+    IReadOnlyList<Carrier>? CarrierIds
 //long TaskSeq,
 //string TaskResult
 ) : IXcpStatus {
@@ -28,6 +30,7 @@ public record RcpStatus<TCustom>(
             && EqualityComparer<RcpWorkingState>.Default.Equals(WorkingState, other.WorkingState)
             && Util.EnumerableEquals(ErrorCodes, other.ErrorCodes)
             && EqualityComparer<bool>.Default.Equals(CarrierPresent, other.CarrierPresent)
+            && Util.EnumerableEquals(CarrierIds, other.CarrierIds)
             //&& EqualityComparer<long>.Default.Equals(TaskSeq, other.TaskSeq)
             //&& EqualityComparer<string>.Default.Equals(TaskResult, other.TaskResult)
             && CustomComparerMap.Equals(Custom, other.Custom);
@@ -49,3 +52,8 @@ public enum RcpWorkingState {
     L,      // Placing
     M,      // Moving
 }
+
+public record Carrier(
+    string DropoffId,
+    string BarcodeValue
+);
