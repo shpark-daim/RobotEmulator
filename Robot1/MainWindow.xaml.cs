@@ -19,8 +19,8 @@ public partial class MainWindow : Window {
     // fixme : target (load robot from config)
     private readonly static string _home = "home";
     private const string _robotId = "r1";
+    // FIXME : PortInfo에 추가할지 고민
     private readonly Dictionary<string, Point> _positions = [];
-
     private Timer? _statusReportTimer;
     private DateTime _lastStatusReportTime = DateTime.MinValue;
     private readonly Lock _statusLock = new();
@@ -230,7 +230,8 @@ public partial class MainWindow : Window {
                 await MoveAnimation(to, _operationCts.Token);
 
                 if (!_rcpStatus.CarrierPresent) {
-                    AddProductToPosition(to, GenerateBoxId());
+                    var carrierId = _ports[to].CarrierId ?? GenerateBoxId();
+                    AddProductToPosition(to, carrierId);
 
                     _rcpStatus = _rcpStatus with {
                         EventSeq = _rcpStatus.Sequence,
@@ -263,6 +264,10 @@ public partial class MainWindow : Window {
                 Dispatcher.Invoke(() => AddLog($"Ignore place command: {cmd.RefSeq}, {_rcpStatus.Sequence}"));
                 return;
             }
+            if (_ports[cmd.DropoffId].Carrier is { }) {
+                //Dispatcher.Invoke(() => AddLog($"Carrier on port {cmd.DropoffId} already exists."));
+                //return;
+            }
             try {
                 _isProcessing = true;
                 await Dispatcher.InvokeAsync(() => AddLog($"Place 명령 처리: Dropoff={cmd.DropoffId}"));
@@ -278,16 +283,20 @@ public partial class MainWindow : Window {
                     };
                     await SendStatus();
 
+                    await MoveProductFromTo(from, to);
                     await PlaceAnimation(to, _operationCts.Token);
                 }
                 Dispatcher.Invoke(() => AddLog($"{to}에 place 완료"));
+
                 _rcpStatus = _rcpStatus with {
                     EventSeq = _rcpStatus.Sequence,
                     WorkingState = RcpWorkingState.M,
                     CarrierPresent = false,
                     CarrierIds = [.. _rcpStatus.CarrierIds!.Select(c => {
-                        var hasProduct = _ports.TryGetValue(c.DropoffId, out var product) && product is { };
-                        return c with { BarcodeValue = hasProduct ? "BoxTest" : "" };
+                        var port = _ports[c.DropoffId];
+                        var has = port.Carrier is { };
+                        var carrier = port.CarrierId!;
+                        return c with { BarcodeValue = has ? carrier : "" };
                     })]
                 };
                 await SendStatus();
@@ -670,9 +679,6 @@ public partial class MainWindow : Window {
             product.BeginAnimation(Canvas.LeftProperty, animationX);
             product.BeginAnimation(Canvas.TopProperty, animationY);
         });
-        _ports[from].Carrier = null;
-        _ports[to].Carrier = product;
-        // status update
         return Task.FromResult(true);
     }
 
@@ -806,19 +812,19 @@ public partial class MainWindow : Window {
     #region box install remove buttons
     private void BtnAddA_Click(object sender, RoutedEventArgs e) {
 
-        AddProductToPosition("s5_1", TextBoxA.Text);
+        AddProductToPosition("s5_1", TextBoxS5_1.Text);
     }
 
     private void BtnAddB_Click(object sender, RoutedEventArgs e) {
-        AddProductToPosition("s5_0", TextBoxB.Text);
+        AddProductToPosition("s5_0", TextBoxS5_0.Text);
     }
 
     private void BtnAddC_Click(object sender, RoutedEventArgs e) {
-        AddProductToPosition("s3", TextBoxC.Text);
+        AddProductToPosition("s3", TextBoxS3.Text);
     }
 
     private void BtnAddD_Click(object sender, RoutedEventArgs e) {
-        AddProductToPosition("s4", TextBoxD.Text);
+        AddProductToPosition("s4", TextBoxS4.Text);
     }
 
     private void BtnRemoveA_Click(object sender, RoutedEventArgs e) {
@@ -843,10 +849,13 @@ public partial class MainWindow : Window {
             return null;
         }
 
+
         // 이미 해당 위치에 Product가 있으면 제거
         if (_ports[position].Carrier is { }) {
             RemoveProductFromPosition(position);
         }
+
+        UpdateTextBoxWithProductId(position, productId);
 
         Canvas product = CreateProductBox();
         var pos = GetPositionFromUI(position);
@@ -871,8 +880,8 @@ public partial class MainWindow : Window {
         return product;
     }
 
-    private void RemoveProductFromPosition(string position) {
-        if (_ports[position] is { }) {
+    private Task RemoveProductFromPosition(string position) {
+        if (_ports[position]?.Carrier is { }) {
             Dispatcher.Invoke(() => {
                 MoveCanvas.Children.Remove(_ports[position].Carrier);
             });
@@ -885,6 +894,7 @@ public partial class MainWindow : Window {
             }
 
         }
+        return Task.CompletedTask;
     }
 
     private Canvas CreateProductBox() {
@@ -892,6 +902,7 @@ public partial class MainWindow : Window {
         Dispatcher.Invoke(() => {
             product = new Canvas();
 
+            // Fixme : TextBox update with Id 
             // 메인 박스 면
             Rectangle front = new() {
                 Name = "Front",
@@ -931,6 +942,42 @@ public partial class MainWindow : Window {
         var random = new Random();
         int randomNumber = random.Next(10, 100);
         return $"Box{randomNumber}";
+    }
+
+    private void UpdateTextBoxWithProductId(string position, string? productId) {
+        _ports[position].CarrierId = productId;
+        Dispatcher.Invoke(() => {
+            switch (position) {
+            case "s5_0":
+                TextBoxS5_0.Text = productId ?? "";
+                break;
+            case "s5_1":
+                TextBoxS5_1.Text = productId ?? "";
+                break;
+            case "s3":
+                TextBoxS3.Text = productId ?? "";
+                break;
+            case "s4":
+                TextBoxS4.Text = productId ?? "";
+                break;
+            default:
+                break;
+            }
+        });
+    }
+
+    private Task MoveProductFromTo(string from, string to) {
+        RemoveProductFromPosition(to);
+
+        var carrierId = _ports[from].CarrierId;
+        var product = _ports[from].Carrier;
+        
+        _ports[from].Carrier = null;
+        UpdateTextBoxWithProductId(from, null);
+
+        _ports[to].Carrier = product;
+        UpdateTextBoxWithProductId(to, carrierId);
+        return Task.CompletedTask;
     }
     #endregion box install remove buttons
 
