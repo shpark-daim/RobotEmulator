@@ -35,7 +35,7 @@
 
             <!-- B 위치 (S5_0) -->
             <StackPanel Orientation="Horizontal" Canvas.Left="10" Canvas.Top="20">
-                <TextBox Name="TextBoxB" Width="60" Height="25" VerticalContentAlignment="Center"/>
+                <TextBox Name="TextBoxS5_0" Width="60" Height="25" VerticalContentAlignment="Center"/>
                 <Button Name="BtnAddB" Content="Install" Width="55" Height="25" Margin="5,0,0,0" Click="BtnAddB_Click"/>
                 <Button Name="BtnRemoveB" Content="Remove" Width="55" Height="25" Margin="5,0,0,0" Click="BtnRemoveB_Click"/>
             </StackPanel>
@@ -45,7 +45,7 @@
 
             <!-- A 위치 (S5_1) -->
             <StackPanel Orientation="Horizontal" Canvas.Left="10" Canvas.Top="60">
-                <TextBox Name="TextBoxA" Width="60" Height="25" VerticalContentAlignment="Center"/>
+                <TextBox Name="TextBoxS5_1" Width="60" Height="25" VerticalContentAlignment="Center"/>
                 <Button Name="BtnAddA" Content="Install" Width="55" Height="25" Margin="5,0,0,0" Click="BtnAddA_Click"/>
                 <Button Name="BtnRemoveA" Content="Remove" Width="55" Height="25" Margin="5,0,0,0" Click="BtnRemoveA_Click"/>
             </StackPanel>
@@ -56,7 +56,7 @@
 
             <!-- C 위치 (S3) -->
             <StackPanel Orientation="Horizontal" Canvas.Left="10" Canvas.Top="115">
-                <TextBox Name="TextBoxC" Width="60" Height="25" VerticalContentAlignment="Center"/>
+                <TextBox Name="TextBoxS3" Width="60" Height="25" VerticalContentAlignment="Center"/>
                 <Button Name="BtnAddC" Content="Install" Width="55" Height="25" Margin="5,0,0,0" Click="BtnAddC_Click"/>
                 <Button Name="BtnRemoveC" Content="Remove" Width="55" Height="25" Margin="5,0,0,0" Click="BtnRemoveC_Click"/>
             </StackPanel>
@@ -66,7 +66,7 @@
 
             <!-- D 위치 (S4) -->
             <StackPanel Orientation="Horizontal" Canvas.Left="10" Canvas.Top="155">
-                <TextBox Name="TextBoxD" Width="60" Height="25" VerticalContentAlignment="Center"/>
+                <TextBox Name="TextBoxS4" Width="60" Height="25" VerticalContentAlignment="Center"/>
                 <Button Name="BtnAddD" Content="Install" Width="55" Height="25" Margin="5,0,0,0" Click="BtnAddD_Click"/>
                 <Button Name="BtnRemoveD" Content="Remove" Width="55" Height="25" Margin="5,0,0,0" Click="BtnRemoveD_Click"/>
             </StackPanel>
