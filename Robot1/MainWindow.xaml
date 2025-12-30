@@ -73,28 +73,6 @@
             <Rectangle Name="PositionD" Canvas.Left="214" Canvas.Top="152" Width="40" Height="40" 
                       Fill="LightGreen" Stroke="Green" StrokeThickness="2"/>
             <TextBlock Canvas.Left="226" Canvas.Top="162" Text="S4" FontWeight="Bold" FontSize="14" HorizontalAlignment="Left" VerticalAlignment="Center"/>
-
-            <!-- 로봇 (이동할 객체) - 시작 위치: 중앙 -->
-            <Canvas Name="Product" Canvas.Left="220" Canvas.Top="60">
-                <!-- 메인 박스 면 -->
-                <Rectangle Name ="Front"
-                            Width="20" Height="20" 
-                           Fill="SandyBrown" 
-                           Stroke="SaddleBrown"
-                           StrokeThickness="1"/>
-                <!-- 상단 면 (3D 효과) -->
-                <Polygon Name ="UpperSide"
-                          Fill="BurlyWood"
-                         Stroke="SaddleBrown"
-                         StrokeThickness="1"
-                         Points="0,0 5,-3 25,-3 20,0"/>
-                <!-- 오른쪽 면 (3D 효과) -->
-                <Polygon Name ="RightSide"
-                         Fill="Tan"
-                         Stroke="SaddleBrown" 
-                         StrokeThickness="1"
-                         Points="20,0 25,-3 25,17 20,20"/>
-            </Canvas>
             <!--로봇 팔 베이스 (오른쪽에 고정)-->
             <Ellipse Name="RobotBase" 
                          Canvas.Left="403" Canvas.Top="99" 
