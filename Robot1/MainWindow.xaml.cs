@@ -68,11 +68,11 @@ public partial class MainWindow : Window {
             ),
         ]
     );
-    private readonly Dictionary<string, Canvas?> _positionProducts = new() {
-        { "s5_1", null },
-        { "s5_0", null },
-        { "s3", null },
-        { "s4", null }
+    private readonly Dictionary<string, PortInfo> _ports = new(){
+        {"s5_0", new() { PortId = "s5_0" } },
+        {"s5_1", new() { PortId = "s5_1" } },
+        {"s3", new() { PortId = "s3" } },
+        {"s4", new() { PortId = "s4" } },
     };
 
     public MainWindow() {
@@ -286,7 +286,7 @@ public partial class MainWindow : Window {
                     WorkingState = RcpWorkingState.M,
                     CarrierPresent = false,
                     CarrierIds = [.. _rcpStatus.CarrierIds!.Select(c => {
-                        var hasProduct = _positionProducts.TryGetValue(c.DropoffId, out var product) && product is { };
+                        var hasProduct = _ports.TryGetValue(c.DropoffId, out var product) && product is { };
                         return c with { BarcodeValue = hasProduct ? "BoxTest" : "" };
                     })]
                 };
@@ -307,14 +307,6 @@ public partial class MainWindow : Window {
             } finally {
                 _isProcessing = false;
             }
-        }
-
-        string GetProductId(string to) {
-            if (to == "s5_0") return TextBoxB.Text;
-            if (to == "s5_1") return TextBoxA.Text;
-            if (to == "s3") return TextBoxC.Text;
-            if (to == "s4") return TextBoxD.Text;
-            return "";
         }
     }
 
@@ -504,7 +496,7 @@ public partial class MainWindow : Window {
     }
 
     private Task<bool> PickingUpAnimation(string to, CancellationToken ct) {
-        var product = _positionProducts[to]!;
+        var product = _ports[to].Carrier;
         Dispatcher.Invoke(() => {
             if (ct.IsCancellationRequested) {
                 return;
@@ -542,7 +534,7 @@ public partial class MainWindow : Window {
     }
 
     private Task<bool> PlacingAnimation(string to, CancellationToken ct) {
-        var product = _positionProducts[to]!;
+        var product = _ports[to].Carrier;
         Dispatcher.Invoke(() => {
             if (ct.IsCancellationRequested) {
                 return;
@@ -641,7 +633,7 @@ public partial class MainWindow : Window {
             return Task.FromResult(false);
         }
 
-        var product = _positionProducts[from]!;
+        var product = _ports[from].Carrier;
         Dispatcher.Invoke(() => {
             if (ct.IsCancellationRequested) {
                 // registration.Dispose();
@@ -678,8 +670,8 @@ public partial class MainWindow : Window {
             product.BeginAnimation(Canvas.LeftProperty, animationX);
             product.BeginAnimation(Canvas.TopProperty, animationY);
         });
-        _positionProducts[from] = null;
-        _positionProducts[to] = product;
+        _ports[from].Carrier = null;
+        _ports[to].Carrier = product;
         // status update
         return Task.FromResult(true);
     }
@@ -701,7 +693,7 @@ public partial class MainWindow : Window {
                 Canvas.SetTop(Gripper, gripperCurTop);
 
 
-                _positionProducts.Values.ToList().ForEach(product => {
+                _ports.Values.Select(v => v.Carrier).ToList().ForEach(product => {
                     if (product != null) {
                         var productCurLeft = Canvas.GetLeft(product);
                         var productCurTop = Canvas.GetTop(product);
@@ -852,7 +844,7 @@ public partial class MainWindow : Window {
         }
 
         // 이미 해당 위치에 Product가 있으면 제거
-        if (_positionProducts[position] != null) {
+        if (_ports[position].Carrier is { }) {
             RemoveProductFromPosition(position);
         }
 
@@ -869,9 +861,9 @@ public partial class MainWindow : Window {
         Dispatcher.Invoke(() => {
             MoveCanvas.Children.Add(product);
         });
-        _positionProducts[position] = product;
+        _ports[position].Carrier = product;
         var carrier = _rcpStatus.CarrierIds!.FirstOrDefault(c => c.DropoffId == position);
-        if (carrier != null) {
+        if (carrier is { }) {
             _rcpStatus = _rcpStatus with {
                 CarrierIds = [.. _rcpStatus.CarrierIds!.Select(c => c.DropoffId == position ? c with { BarcodeValue = productId } : c)]
             };
@@ -880,13 +872,13 @@ public partial class MainWindow : Window {
     }
 
     private void RemoveProductFromPosition(string position) {
-        if (_positionProducts[position] != null) {
+        if (_ports[position] is { }) {
             Dispatcher.Invoke(() => {
-                MoveCanvas.Children.Remove(_positionProducts[position]);
+                MoveCanvas.Children.Remove(_ports[position].Carrier);
             });
-            _positionProducts[position] = null;
+            _ports[position].Carrier = null;
             var carrier = _rcpStatus.CarrierIds!.FirstOrDefault(c => c.DropoffId == position);
-            if (carrier != null) {
+            if (carrier is { }) {
                 _rcpStatus = _rcpStatus with {
                     CarrierIds = [.. _rcpStatus.CarrierIds!.Select(c => c.DropoffId == position ? c with { BarcodeValue = "" } : c)]
                 };
