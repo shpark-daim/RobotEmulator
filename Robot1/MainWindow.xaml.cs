@@ -41,6 +41,7 @@ public partial class MainWindow : Window {
     // runtime
     private bool _isProcessing = false;
     private Point _currentRobotArmPosition;
+    private static readonly string[] _portIds = ["s5_0", "s5_1", "s3", "s4"];
     private RcpStatus<JsonElement?> _rcpStatus = new(
         Id: _robotId,
         Sequence: 0,
@@ -49,31 +50,17 @@ public partial class MainWindow : Window {
         WorkingState: RcpWorkingState.I,
         ErrorCodes: [],
         CarrierPresent: false,
-        CarrierIds: [
-            new(
-                DropoffId: "s5_0",
-                BarcodeValue: ""
-            ),
-            new(
-                DropoffId: "s5_1",
-                BarcodeValue: ""
-            ),
-            new(
-                DropoffId: "s3",
-                BarcodeValue: ""
-            ),
-            new(
-                DropoffId: "s4",
-                BarcodeValue: ""
-            ),
-        ]
+        CarrierIds: [.. _portIds.Select(id => new Carrier(
+            DropoffId: id,
+            BarcodeValue: ""
+        ))]
     );
-    private readonly Dictionary<string, PortInfo> _ports = new(){
-        {"s5_0", new() { PortId = "s5_0" } },
-        {"s5_1", new() { PortId = "s5_1" } },
-        {"s3", new() { PortId = "s3" } },
-        {"s4", new() { PortId = "s4" } },
-    };
+
+    private readonly Dictionary<string, PortInfo> _ports =
+        _portIds.ToDictionary(
+            id => id,
+            id => new PortInfo { PortId = id }
+        );
 
     public MainWindow() {
         InitializeComponent();
@@ -394,15 +381,32 @@ public partial class MainWindow : Window {
 
     #region position
     private async Task InitializePosition() {
-        var initialRobotPosition = new Point(Canvas.GetLeft(Arm2) + Arm2.X2, Canvas.GetTop(Arm2) + Arm2.Y2);
-        _positions.TryAdd("home", new Point(initialRobotPosition.X, initialRobotPosition.Y));
-        _positions.TryAdd("s5_0", new Point(Canvas.GetLeft(PositionB) + 20, Canvas.GetTop(PositionB)));
-        _positions.TryAdd("s5_1", new Point(Canvas.GetLeft(PositionA) + 20, Canvas.GetTop(PositionA)));
-        _positions.TryAdd("s3", new Point(Canvas.GetLeft(PositionC) + 20, Canvas.GetTop(PositionC)));
-        _positions.TryAdd("s4", new Point(Canvas.GetLeft(PositionD) + 20, Canvas.GetTop(PositionD)));
+        var initialRobotPosition = new Point(
+        Canvas.GetLeft(Arm2) + Arm2.X2,
+        Canvas.GetTop(Arm2) + Arm2.Y2
+        );
+
+        _positions.TryAdd("home", initialRobotPosition);
+
+        foreach (var portId in _portIds) {
+            var element = GetPositionElement(portId);
+            _positions.TryAdd(portId, new Point(
+                Canvas.GetLeft(element) + 20,
+                Canvas.GetTop(element)
+            ));
+        }
+
         _currentRobotArmPosition = _positions["home"];
         await Task.Delay(0);
     }
+
+    private Rectangle GetPositionElement(string portId) => portId switch {
+        "s5_0" => PositionS5_0,
+        "s5_1" => PositionS5_1,
+        "s3" => PositionS3,
+        "s4" => PositionS4,
+        _ => throw new ArgumentException($"Unknown port: {portId}")
+    };
 
     private void StartPositionUpdateTimer() {
         // 기존 타이머가 있다면 정지
@@ -810,36 +814,36 @@ public partial class MainWindow : Window {
     #endregion robot mode buttons
 
     #region box install remove buttons
-    private void BtnAddA_Click(object sender, RoutedEventArgs e) {
+    private void BtnAddS5_1_Click(object sender, RoutedEventArgs e) {
 
         AddProductToPosition("s5_1", TextBoxS5_1.Text);
     }
 
-    private void BtnAddB_Click(object sender, RoutedEventArgs e) {
+    private void BtnAddS5_0_Click(object sender, RoutedEventArgs e) {
         AddProductToPosition("s5_0", TextBoxS5_0.Text);
     }
 
-    private void BtnAddC_Click(object sender, RoutedEventArgs e) {
+    private void BtnAddS3_Click(object sender, RoutedEventArgs e) {
         AddProductToPosition("s3", TextBoxS3.Text);
     }
 
-    private void BtnAddD_Click(object sender, RoutedEventArgs e) {
+    private void BtnAddS4_Click(object sender, RoutedEventArgs e) {
         AddProductToPosition("s4", TextBoxS4.Text);
     }
 
-    private void BtnRemoveA_Click(object sender, RoutedEventArgs e) {
+    private void BtnRemoveS5_1_Click(object sender, RoutedEventArgs e) {
         RemoveProductFromPosition("s5_1");
     }
 
-    private void BtnRemoveB_Click(object sender, RoutedEventArgs e) {
+    private void BtnRemoveS5_0_Click(object sender, RoutedEventArgs e) {
         RemoveProductFromPosition("s5_0");
     }
 
-    private void BtnRemoveC_Click(object sender, RoutedEventArgs e) {
+    private void BtnRemoveS3_Click(object sender, RoutedEventArgs e) {
         RemoveProductFromPosition("s3");
     }
 
-    private void BtnRemoveD_Click(object sender, RoutedEventArgs e) {
+    private void BtnRemoveS4_Click(object sender, RoutedEventArgs e) {
         RemoveProductFromPosition("s4");
     }
 
@@ -971,7 +975,7 @@ public partial class MainWindow : Window {
 
         var carrierId = _ports[from].CarrierId;
         var product = _ports[from].Carrier;
-        
+
         _ports[from].Carrier = null;
         UpdateTextBoxWithProductId(from, null);
 
