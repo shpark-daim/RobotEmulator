@@ -89,7 +89,7 @@ public partial class MainWindow : Window {
             await _mqttClient.SubscribeAsync(topic);
             Dispatcher.Invoke(() => AddLog($"토픽 {topic} 구독 완료"));
 
-            StartStatusReporting();
+            //StartStatusReporting();
         };
 
         _mqttClient.DisconnectedAsync += async (e) => {
@@ -147,6 +147,9 @@ public partial class MainWindow : Window {
         } else if (topic.Contains("/cmd/mode")) {
             var cmd = JsonSerializer.Deserialize(message, RcpContext.Default.RcpModeCommand);
             await HandleModeCommand(cmd);
+        } else if (topic.Contains("/cmd/status")) {
+            var cmd = JsonSerializer.Deserialize(message, RcpContext.Default.RcpStatusCommand);
+            await HandleStatusCommand(cmd);
         }
     }
 
@@ -324,6 +327,10 @@ public partial class MainWindow : Window {
                 break;
             }
         }
+    }
+
+    private async Task HandleStatusCommand(RcpStatusCommand? cmd) {
+        await SendStatus();
     }
     #endregion handle command
 
