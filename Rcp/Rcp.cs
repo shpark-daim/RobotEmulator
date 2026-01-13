@@ -50,7 +50,8 @@ public static class Rcp {
 [JsonSerializable(typeof(RcpStatus))]
 [JsonSerializable(typeof(RcpStatusCommand))]
 [JsonSerializable(typeof(RcpSyncCommand))]
-[JsonSerializable(typeof(RcpModeCommand))]
+[JsonSerializable(typeof(RcpAutoCommand))]
+[JsonSerializable(typeof(RcpManualCommand))]
 [JsonSerializable(typeof(RcpPickCommand))]
 [JsonSerializable(typeof(RcpPlaceCommand))]
 public partial class RcpContext : JsonSerializerContext {

@@ -144,9 +144,12 @@ public partial class MainWindow : Window {
         } else if (topic.Contains("/cmd/place")) {
             var cmd = JsonSerializer.Deserialize(message, RcpContext.Default.RcpPlaceCommand);
             if (_rcpStatus.Mode == RcpMode.A && !_isProcessing) await HandlePlaceCommand(cmd);
-        } else if (topic.Contains("/cmd/mode")) {
-            var cmd = JsonSerializer.Deserialize(message, RcpContext.Default.RcpModeCommand);
-            await HandleModeCommand(cmd);
+        } else if (topic.Contains("/cmd/auto")) {
+            var cmd = JsonSerializer.Deserialize(message, RcpContext.Default.RcpAutoCommand);
+            await HandleAutoCommand(cmd);
+        } else if (topic.Contains("/cmd/manual")) {
+            var cmd = JsonSerializer.Deserialize(message, RcpContext.Default.RcpManualCommand);
+            await HandleManualCommand(cmd);
         } else if (topic.Contains("/cmd/status")) {
             var cmd = JsonSerializer.Deserialize(message, RcpContext.Default.RcpStatusCommand);
             await HandleStatusCommand(cmd);
@@ -309,24 +312,12 @@ public partial class MainWindow : Window {
         }
     }
 
-    private async Task HandleModeCommand(RcpModeCommand? cmd) {
-        if (cmd is { }) {
-            await Dispatcher.InvokeAsync(() => AddLog($"Mode 명령 처리: Mode={cmd.Mode}"));
-            switch (cmd.Mode) {
-            case RcpMode.M:
-                if (_rcpStatus.ErrorCodes.Count == 0) await ChangeToManualMode();
-                break;
-            case RcpMode.A:
-                if (_rcpStatus.Mode == RcpMode.M) await ChangeToAutoMode();
-                break;
-            case RcpMode.E:
-                // todo?
-                break;
-            default:
-                Dispatcher.Invoke(() => AddLog($"알 수 없는 모드: {cmd.Mode}"));
-                break;
-            }
-        }
+    private async Task HandleAutoCommand(RcpAutoCommand cmd) {
+        if (_rcpStatus.Mode == RcpMode.M) await ChangeToAutoMode();
+    }
+
+    private async Task HandleManualCommand(RcpManualCommand cmd) {
+        if (_rcpStatus.ErrorCodes.Count == 0) await ChangeToManualMode();
     }
 
     private async Task HandleStatusCommand(RcpStatusCommand? cmd) {
