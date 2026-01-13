@@ -16,7 +16,10 @@ public record RcpStatusCommand(string Id)
 public record RcpSyncCommand(long Sequence)
     : RcpCommand();
 
-public record RcpModeCommand(RcpMode Mode)
+public record RcpAutoCommand()
+    : RcpCommand();
+
+public record RcpManualCommand()
     : RcpCommand();
 
 public record RcpPickCommand(string PickupId, long RefSeq = 0)
