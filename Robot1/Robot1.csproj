@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Rcp\Rcp.csproj" />
+    <ProjectReference Include="..\Rcp\Ggtb.Rcp.csproj" />
   </ItemGroup>
 
 </Project>

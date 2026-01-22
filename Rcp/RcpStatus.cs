@@ -1,8 +1,7 @@
 ﻿using Daim.Xms.General;
 using Daim.Xms.Xcp;
-using System.Threading;
 
-namespace Rcp;
+namespace Ggtb.Rcp;
 public record RcpStatus<TCustom>(
     string Id,
     long Sequence,

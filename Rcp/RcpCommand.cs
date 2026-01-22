@@ -1,7 +1,7 @@
 ﻿using Daim.Xms.Xcp;
 using System.Text.Json.Serialization;
 
-namespace Rcp;
+namespace Ggtb.Rcp;
 public abstract record RcpCommand() : IXcpCommand {
 
     public static string Identifier => Rcp.Identifier;

@@ -1,9 +1,9 @@
 ﻿using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using RcpStatus = Rcp.RcpStatus<System.Text.Json.JsonElement?>;
+using RcpStatus = Ggtb.Rcp.RcpStatus<System.Text.Json.JsonElement?>;
 
-namespace Rcp;
+namespace Ggtb.Rcp;
 public static class Rcp {
     public const string PrefixDefault = "xflow";
     public const string Identifier = "rcp";
