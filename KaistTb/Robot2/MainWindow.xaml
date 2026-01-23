@@ -1,11 +1,60 @@
 ﻿<Window x:Class="Robot2.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:Robot2"
-        mc:Ignorable="d"
-        Title="MainWindow" Height="250" Width="800">
+        Title="MQTT Robot Mover" Height="250" Width="800"
+        WindowStartupLocation="CenterScreen">
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="100"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- 상단 제어 패널 -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Background="#f0f0f0" Margin="10">
+            <Button Name="ConnectButton" Content="MQTT 연결" Width="100" Height="20" Margin="5"/>
+            <TextBlock Text="상태:" VerticalAlignment="Center" Margin="10,0,5,0"/>
+            <TextBlock Name="StatusText" Text="연결 안됨" Width="80" VerticalAlignment="Center" Foreground="Red"/>
+
+            <!-- Manual 및 Error 버튼 추가 -->
+            <Button Name="AutoButton" Content="Auto" Width="60" Height="20" Margin="5,0" 
+                        Background="White" BorderBrush="SlateGray"/>
+            <Button Name="ManualButton" Content="Manual" Width="60" Height="20" Margin="5,0" 
+                        Background="LightYellow" BorderBrush="Orange"/>
+            <Button Name="ErrorButton" Content="Error" Width="60" Height="20" Margin="5,0"
+                        Background="LightPink" BorderBrush="Red"/>
+            <Button Name="InitializeButton" Content="Initialize" Width="60" Height="20" Margin="5,0"
+                        Background="DarkGray" BorderBrush="Black"/>
+        </StackPanel>
+
+        <!-- 메인 화면 (이동 영역) -->
+        <Canvas Grid.Row="1" Name="MoveCanvas" Background="White" Margin="10,10,10,4">
+            <!--EQ2-->
+            <Rectangle Width="100" Height="50" Fill="LightGray" 
+                           Canvas.Left="100" Canvas.Top="10"  HorizontalAlignment="Center" VerticalAlignment="Top"/>
+            <Rectangle x:Name="ProgressBarEQ2" 
+                           Width="0" Height="30" Fill="Green" 
+                           Canvas.Left="100" Canvas.Top="20" Opacity="0.7"/>
+            <TextBlock Text="EQ2" FontWeight="Bold" FontSize="20" 
+                   Canvas.Left="130" Canvas.Top="50" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+
+            <!--EQ3-->
+            <Rectangle Width="100" Height="50" Fill="LightGray" 
+               Canvas.Left="300" Canvas.Top="10"  HorizontalAlignment="Center" VerticalAlignment="Top"/>
+            <Rectangle x:Name="ProgressBarEQ3" 
+                           Width="0" Height="30" Fill="Green" 
+                           Canvas.Left="300" Canvas.Top="20" Opacity="0.7"/>
+            <TextBlock Text="EQ3" FontWeight="Bold" FontSize="20" 
+                Canvas.Left="330" Canvas.Top="50" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+
+            <!--EQ1-->
+            <Rectangle Width="100" Height="50" Fill="LightGray" 
+               Canvas.Left="500" Canvas.Top="10"  HorizontalAlignment="Center" VerticalAlignment="Top"/>
+            <Rectangle x:Name="ProgressBarEQ1" 
+                           Width="0" Height="30" Fill="Green" 
+                           Canvas.Left="500" Canvas.Top="20" Opacity="0.7"/>
+            <TextBlock Text="EQ1" FontWeight="Bold" FontSize="20" 
+                Canvas.Left="530" Canvas.Top="50" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+        </Canvas>
     </Grid>
 </Window>
