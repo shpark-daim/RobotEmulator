@@ -1,7 +1,7 @@
 ﻿<Window x:Class="Robot2.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="MQTT Robot Mover" Height="250" Width="800"
+        Title="MQTT Robot Mover" Height="430" Width="500"
         WindowStartupLocation="CenterScreen">
     <Grid>
         <Grid.RowDefinitions>
@@ -15,46 +15,130 @@
             <Button Name="ConnectButton" Content="MQTT 연결" Width="100" Height="20" Margin="5"/>
             <TextBlock Text="상태:" VerticalAlignment="Center" Margin="10,0,5,0"/>
             <TextBlock Name="StatusText" Text="연결 안됨" Width="80" VerticalAlignment="Center" Foreground="Red"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button x:Name="AutoButton" Content="Auto" Width="60" Height="20" Margin="5,0" 
+                        Background="LightBlue" BorderBrush="SlateGray"/>
+                <Button x:Name="ManualButton" Content="Manual" Width="60" Height="20" Margin="5,0" 
+                        Background="LightYellow" BorderBrush="Orange"/>
+            </StackPanel>
 
             <!-- Manual 및 Error 버튼 추가 -->
-            <Button Name="AutoButton" Content="Auto" Width="60" Height="20" Margin="5,0" 
-                        Background="White" BorderBrush="SlateGray"/>
-            <Button Name="ManualButton" Content="Manual" Width="60" Height="20" Margin="5,0" 
-                        Background="LightYellow" BorderBrush="Orange"/>
-            <Button Name="ErrorButton" Content="Error" Width="60" Height="20" Margin="5,0"
-                        Background="LightPink" BorderBrush="Red"/>
-            <Button Name="InitializeButton" Content="Initialize" Width="60" Height="20" Margin="5,0"
-                        Background="DarkGray" BorderBrush="Black"/>
         </StackPanel>
 
         <!-- 메인 화면 (이동 영역) -->
         <Canvas Grid.Row="1" Name="MoveCanvas" Background="White" Margin="10,10,10,4">
             <!--EQ2-->
+            <Button x:Name="EQ2_ModeButton" Content="A" Width="100" Height="25"
+                    Canvas.Left="100" Background="LightBlue" BorderBrush="SlateGray"/>
             <Rectangle Width="100" Height="50" Fill="LightGray" 
-                           Canvas.Left="100" Canvas.Top="10"  HorizontalAlignment="Center" VerticalAlignment="Top"/>
+                           Canvas.Left="100" Canvas.Top="30"  HorizontalAlignment="Center" VerticalAlignment="Top"/>
             <Rectangle x:Name="ProgressBarEQ2" 
-                           Width="0" Height="30" Fill="Green" 
-                           Canvas.Left="100" Canvas.Top="20" Opacity="0.7"/>
+                           Width="0" Height="20" Fill="Green" 
+                           Canvas.Left="100" Canvas.Top="40" Opacity="0.7"/>
             <TextBlock Text="EQ2" FontWeight="Bold" FontSize="20" 
                    Canvas.Left="130" Canvas.Top="50" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+            <Grid Canvas.Left="0" Canvas.Top="100">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="100"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Mode -->
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Mode" VerticalAlignment="Center" Margin="0,0,10,5"/>
+                <TextBox Grid.Row="0" Grid.Column="1" Name="EQ2_Mode" Text="M" IsReadOnly="True" 
+             Height="25" Margin="0,0,0,5" VerticalContentAlignment="Center" TextAlignment="Center"/>
+
+                <!-- State -->
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="State" VerticalAlignment="Center" Margin="0,0,10,5"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Name="EQ2_WorkingState" Text="I" IsReadOnly="True" 
+             Height="25" Margin="0,0,0,5" VerticalContentAlignment="Center" TextAlignment="Center"/>
+
+                <!-- CompleteReason -->
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="CompleteReason" VerticalAlignment="Center" Margin="0,0,10,5"/>
+                <TextBox Grid.Row="2" Grid.Column="1" Name="EQ2_CompletionReason" IsReadOnly="True" 
+             Height="25" Margin="0,0,0,5" VerticalContentAlignment="Center" TextAlignment="Center"/>
+
+                <!-- Job -->
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="Job" VerticalAlignment="Center" Margin="0,0,10,5"/>
+                <TextBox Grid.Row="3" Grid.Column="1" Name="EQ2_JobId" IsReadOnly="True" 
+             Height="25" Margin="0,0,0,5" VerticalContentAlignment="Center" TextAlignment="Center"/>
+
+                <!-- Recipe -->
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="Recipe" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <TextBox Grid.Row="4" Grid.Column="1" Name="EQ2_RecipeId" IsReadOnly="True" 
+             Height="25" Margin="0,0,0,5" VerticalContentAlignment="Center" TextAlignment="Center"/>
+
+                <TextBlock Grid.Row="5" Grid.Column="0" Text="Seq" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <TextBox Grid.Row="5" Grid.Column="1" Name="EQ2_Seq" Text="0" IsReadOnly="True" 
+             Height="25" Margin="0,0,0,5" VerticalContentAlignment="Center" TextAlignment="Center"/>
+
+                <TextBlock Grid.Row="6" Grid.Column="0" Text="EventSeq" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <TextBox Grid.Row="6" Grid.Column="1" Name="EQ2_EventSeq" Text="0" IsReadOnly="True" 
+             Height="25" VerticalContentAlignment="Center" TextAlignment="Center"/>
+            </Grid>
 
             <!--EQ3-->
+            <Button x:Name="EQ3_ModeButton" Content="A" Width="100" Height="25"
+                    Canvas.Left="210" Background="LightBlue" BorderBrush="SlateGray"/>
             <Rectangle Width="100" Height="50" Fill="LightGray" 
-               Canvas.Left="300" Canvas.Top="10"  HorizontalAlignment="Center" VerticalAlignment="Top"/>
+                    Canvas.Left="210" Canvas.Top="30"  HorizontalAlignment="Center" VerticalAlignment="Top"/>
             <Rectangle x:Name="ProgressBarEQ3" 
-                           Width="0" Height="30" Fill="Green" 
-                           Canvas.Left="300" Canvas.Top="20" Opacity="0.7"/>
+                           Width="0" Height="20" Fill="Green" 
+                           Canvas.Left="210" Canvas.Top="40" Opacity="0.7"/>
             <TextBlock Text="EQ3" FontWeight="Bold" FontSize="20" 
-                Canvas.Left="330" Canvas.Top="50" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+                Canvas.Left="240" Canvas.Top="50" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+            <StackPanel Canvas.Left="210" Canvas.Top="100">
+                <TextBox Name="EQ3_Mode" Text="M" IsReadOnly="True" Width="100" Height="25" Margin="0,0,0,5"
+             VerticalContentAlignment="Center" TextAlignment="Center"/>
+                <TextBox Name="EQ3_WorkingState" Text="I" IsReadOnly="True" Width="100" Height="25" Margin="0,0,0,5"
+             VerticalContentAlignment="Center" TextAlignment="Center"/>
+                <TextBox Name="EQ3_CompletionReason" IsReadOnly="True" Width="100" Height="25" Margin="0,0,0,5"
+             VerticalContentAlignment="Center" TextAlignment="Center"/>
+                <TextBox Name="EQ3_JobId" IsReadOnly="True" Width="100" Height="25" Margin="0,0,0,5"
+             VerticalContentAlignment="Center" TextAlignment="Center"/>
+                <TextBox Name="EQ3_RecipeId" IsReadOnly="True" Width="100" Height="25" Margin="0,0,0,5"
+             VerticalContentAlignment="Center" TextAlignment="Center"/>
+                <TextBox Name="EQ3_Seq" Text="0" IsReadOnly="True" Width="100" Height="25" Margin="0,0,0,5" 
+             VerticalContentAlignment="Center" TextAlignment="Center"/>
+                <TextBox Name="EQ3_EventSeq" Text="0" IsReadOnly="True" Width="100" Height="25"
+             VerticalContentAlignment="Center" TextAlignment="Center"/>
+            </StackPanel>
 
             <!--EQ1-->
+            <Button x:Name="EQ1_ModeButton" Content="A" Width="100" Height="25"
+                Canvas.Left="320" Background="LightBlue" BorderBrush="SlateGray"/>
             <Rectangle Width="100" Height="50" Fill="LightGray" 
-               Canvas.Left="500" Canvas.Top="10"  HorizontalAlignment="Center" VerticalAlignment="Top"/>
+               Canvas.Left="320" Canvas.Top="30"  HorizontalAlignment="Center" VerticalAlignment="Top"/>
             <Rectangle x:Name="ProgressBarEQ1" 
-                           Width="0" Height="30" Fill="Green" 
-                           Canvas.Left="500" Canvas.Top="20" Opacity="0.7"/>
+                           Width="0" Height="20" Fill="Green" 
+                           Canvas.Left="320" Canvas.Top="40" Opacity="0.7"/>
             <TextBlock Text="EQ1" FontWeight="Bold" FontSize="20" 
-                Canvas.Left="530" Canvas.Top="50" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+                Canvas.Left="350" Canvas.Top="50" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+            <StackPanel Canvas.Left="320" Canvas.Top="100">
+                <TextBox Name="EQ1_Mode" Text="M" IsReadOnly="True" Width="100" Height="25" Margin="0,0,0,5"
+             VerticalContentAlignment="Center" TextAlignment="Center"/>
+                <TextBox Name="EQ1_WorkingState" Text="I" IsReadOnly="True" Width="100" Height="25" Margin="0,0,0,5"
+             VerticalContentAlignment="Center" TextAlignment="Center"/>
+                <TextBox Name="EQ1_CompletionReason" IsReadOnly="True" Width="100" Height="25" Margin="0,0,0,5"
+             VerticalContentAlignment="Center" TextAlignment="Center"/>
+                <TextBox Name="EQ1_JobId" IsReadOnly="True" Width="100" Height="25" Margin="0,0,0,5"
+             VerticalContentAlignment="Center" TextAlignment="Center"/>
+                <TextBox Name="EQ1_RecipeId" IsReadOnly="True" Width="100" Height="25" Margin="0,0,0,5"
+             VerticalContentAlignment="Center" TextAlignment="Center"/>
+                <TextBox Name="EQ1_Seq" Text="0" IsReadOnly="True" Width="100" Height="25" Margin="0,0,0,5"
+             VerticalContentAlignment="Center" TextAlignment="Center"/>
+                <TextBox Name="EQ1_EventSeq" Text="0" IsReadOnly="True" Width="100" Height="25"
+             VerticalContentAlignment="Center" TextAlignment="Center"/>
+            </StackPanel>
         </Canvas>
     </Grid>
 </Window>
