@@ -6,9 +6,9 @@ using System.Windows.Shapes;
 namespace Robot2 {
     public partial class MainWindow : Window {
         private MqttService? _mqttService;
-        private readonly string[] _robotName = { "EQ1", "EQ2", "EQ3" };
-        private Dictionary<string, Robot> _robotWorkers = [];
-        private Dictionary<string, RobotUIControls> _robotControls = [];
+        private readonly string[] _robotName = ["EQ1", "EQ2", "EQ3"];
+        private readonly Dictionary<string, Robot> _robotWorkers = [];
+        private readonly Dictionary<string, RobotUIControls> _robotControls = [];
         public MainWindow() {
             InitializeMqtt();
             InitializeComponent();

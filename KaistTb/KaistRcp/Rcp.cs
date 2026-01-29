@@ -65,11 +65,7 @@ public static class Rcp {
 public partial class RcpContext : JsonSerializerContext {
     static RcpContext() {
         OptionsWithRelaxedEscaping = new(Default.Options) {
-            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-            Converters = { new JsonStringEnumConverter() }
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
         };
     }
     public static JsonSerializerOptions OptionsWithRelaxedEscaping { get; }

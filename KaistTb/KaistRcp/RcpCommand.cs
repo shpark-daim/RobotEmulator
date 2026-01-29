@@ -21,7 +21,7 @@ public record RcpAutoCommand()
 public record RcpManualCommand()
     : RcpCommand();
 
-public record RcpStartCommand(string jobId, string recipeId, long RefSeq = 0)
+public record RcpStartCommand(string JobId, string RecipeId, long RefSeq = 0)
     : RcpTaskCommand(RefSeq);
 
 public record RcpStopCommand(long RefSeq = 0)

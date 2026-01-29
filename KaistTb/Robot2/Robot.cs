@@ -7,7 +7,7 @@ namespace Robot2;
 
 public class Robot : BackgroundWorker {
     public string Id { get; init; }
-    public RcpMode Mode => _status.Mode;
+    public RcpMode Mode => _status!.Mode;
     public Robot(string id, MqttService mqttService) {
         Id = id;
         _mqttService = mqttService;
@@ -31,18 +31,8 @@ public class Robot : BackgroundWorker {
     public event EventHandler<(string Id, string? RecipeId)>? RecipeChanged;
     public event EventHandler<(string Id, long Sequence)>? SequenceChanged;
     public event EventHandler<(string Id, long EventSequence)>? EventSequenceChanged;
-    private RcpStatus _status = new(
-        "",
-        0,
-        0,
-        RcpMode.M,
-        RcpWorkingState.I,
-        null,
-        [],
-        null,
-        null
-        );
-    private bool _isProcessing = false;
+    private RcpStatus _status;
+    private bool _reconciled;
 
     private async Task ExecuteAsync(CancellationToken ct) {
         while (!ct.IsCancellationRequested) {
@@ -59,6 +49,7 @@ public class Robot : BackgroundWorker {
                             Sequence = rcpCommand.Sequence,
                             EventSeq = rcpCommand.Sequence
                         };
+                        _reconciled = true;
                         SequenceChanged?.Invoke(this, (Id, _status.Sequence));
                         EventSequenceChanged?.Invoke(this,( Id, _status.EventSeq));
                         await SendStatus();
@@ -93,8 +84,8 @@ public class Robot : BackgroundWorker {
                         EventSeq = _status.Sequence,
                         WorkingState = RcpWorkingState.R,
                         CompletionReason = null,
-                        JobId = rcpCommand.jobId,
-                        RecipeId = rcpCommand.recipeId,
+                        JobId = rcpCommand.JobId,
+                        RecipeId = rcpCommand.RecipeId,
                     };
                     WorkingStateChanged?.Invoke(this, (Id, _status.WorkingState));
                     CompletionReasonChanged?.Invoke(this, (Id, _status.CompletionReason));
@@ -132,7 +123,7 @@ public class Robot : BackgroundWorker {
                     EventSequenceChanged?.Invoke(this, (Id, _status.EventSeq));
                     await SendStatus();
 
-                    await Task.Delay(1000);
+                    await Task.Delay(1000, ct);
 
                     _status = _status with {
                         EventSeq = _status.Sequence,
@@ -158,7 +149,7 @@ public class Robot : BackgroundWorker {
                     EventSequenceChanged?.Invoke(this, (Id, _status.EventSeq));
                     await SendStatus();
 
-                    await Task.Delay(1000);
+                    await Task.Delay(1000, ct);
 
                     _status = _status with {
                         EventSeq = _status.Sequence,
@@ -184,7 +175,7 @@ public class Robot : BackgroundWorker {
                     EventSequenceChanged?.Invoke(this, (Id, _status.EventSeq));
                     await SendStatus();
 
-                    await Task.Delay(1000);
+                    await Task.Delay(1000, ct);
 
                     _status = _status with {
                         EventSeq = _status.Sequence,
@@ -247,7 +238,7 @@ public class Robot : BackgroundWorker {
 
     private async Task SendStatus() {
         await _mqttService.QueueMessage(_status);
-        _status = _status with { Sequence = _status.Sequence + 1 };
+        if (_reconciled) _status = _status with { Sequence = _status.Sequence + 1 };
     }
 
     public async Task WriteChannel(RcpCommand cmd, CancellationToken ct = default) {
