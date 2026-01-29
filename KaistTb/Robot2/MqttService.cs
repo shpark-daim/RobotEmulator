@@ -9,7 +9,7 @@ namespace Robot2 {
     public class MqttService {
         private readonly string _brokerAddress;
         private readonly int _port;
-        private IMqttClient _mqttClient;
+        private readonly IMqttClient _mqttClient;
         private readonly MqttClientFactory _mqttFactory = new();
         public bool IsConnected => _mqttClient?.IsConnected ?? false;
         public event EventHandler<bool>? ConnectionChanged;
@@ -56,7 +56,7 @@ namespace Robot2 {
             var result = e.ConnectResult;
             if (result.ResultCode != MqttClientConnectResultCode.Success) {
                 // FIXME : LOGGING
-                Console.WriteLine("Mqtt fail to connect: {ResultCode}", result.ResultCode);
+                Console.WriteLine($"Mqtt fail to connect: {result.ResultCode}");
             } else {
                 Console.WriteLine("Mqtt connected");
                 var mqttSubscribeOption = _mqttFactory.CreateSubscribeOptionsBuilder()
@@ -71,7 +71,7 @@ namespace Robot2 {
         }
 
         private async Task MqttClientDisConnected(MqttClientDisconnectedEventArgs e) {
-            Console.WriteLine("Mqtt disconneceted: {Reason}, {ReasonString}", e.Reason, e.ReasonString);
+            Console.WriteLine($"Mqtt disconneceted: {e.Reason}, {e.ReasonString}");
             ConnectionChanged?.Invoke(this, false);
             await Task.Delay(1000);
             await ConnectAsync();
@@ -80,9 +80,8 @@ namespace Robot2 {
         private async Task OnMessageReceived(MqttApplicationMessageReceivedEventArgs e) {
             var message = Encoding.UTF8.GetString(e.ApplicationMessage.Payload);
             var topic = Xcp.ParseTopic(e.ApplicationMessage.Topic);
-            Console.WriteLine("MqttRecv: {Topic} {MqttMsg}", topic, message);
-            var topicInfo = Xcp.ParseTopic(e.ApplicationMessage.Topic);
-            RcpCommand? cmdObj = (topicInfo.Protocol, topicInfo.SubType) switch {
+            Console.WriteLine($"MqttRecv: {topic} {message}");
+            RcpCommand? cmdObj = (topic.Protocol, topic.SubType) switch {
                 (Rcp.Identifier, Rcp.CmdStatus) => new RcpStatusCommand(),
                 (Rcp.Identifier, Rcp.CmdSync) => JsonSerializer.Deserialize(message, RcpContext.Default.RcpSyncCommand) ,
                 (Rcp.Identifier, Rcp.CmdAuto) => new RcpAutoCommand(),
@@ -96,7 +95,7 @@ namespace Robot2 {
                 _ => throw new NotImplementedException()
             };
             if (cmdObj == null) throw new Exception("Fail to deserialize command");
-            CommandReceived?.Invoke(topicInfo.Target, cmdObj);
+            CommandReceived?.Invoke(topic.Target, cmdObj);
         }
 
         private async Task ProcessMessageQueue() {
@@ -119,7 +118,7 @@ namespace Robot2 {
             var applicationMessage = new MqttApplicationMessageBuilder()
                     .WithTopic(topic).WithPayload(msg).Build();
             await _mqttClient.PublishAsync(applicationMessage, ct);
-            Console.WriteLine("MqttSend: {Topic} {MqttMsg}", topic, msg);
+            Console.WriteLine($"MqttSend: {topic} {msg}");
         }
     }
 }

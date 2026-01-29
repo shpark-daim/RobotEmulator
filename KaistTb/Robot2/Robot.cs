@@ -42,7 +42,6 @@ public class Robot : BackgroundWorker {
         null,
         null
         );
-    private bool _isProcessing = false;
 
     private async Task ExecuteAsync(CancellationToken ct) {
         while (!ct.IsCancellationRequested) {
@@ -132,7 +131,7 @@ public class Robot : BackgroundWorker {
                     EventSequenceChanged?.Invoke(this, (Id, _status.EventSeq));
                     await SendStatus();
 
-                    await Task.Delay(1000);
+                    await Task.Delay(1000, ct);
 
                     _status = _status with {
                         EventSeq = _status.Sequence,
@@ -158,7 +157,7 @@ public class Robot : BackgroundWorker {
                     EventSequenceChanged?.Invoke(this, (Id, _status.EventSeq));
                     await SendStatus();
 
-                    await Task.Delay(1000);
+                    await Task.Delay(1000, ct);
 
                     _status = _status with {
                         EventSeq = _status.Sequence,
@@ -184,7 +183,7 @@ public class Robot : BackgroundWorker {
                     EventSequenceChanged?.Invoke(this, (Id, _status.EventSeq));
                     await SendStatus();
 
-                    await Task.Delay(1000);
+                    await Task.Delay(1000, ct);
 
                     _status = _status with {
                         EventSeq = _status.Sequence,
