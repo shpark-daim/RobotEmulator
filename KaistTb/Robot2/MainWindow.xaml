@@ -35,8 +35,8 @@
             <Rectangle x:Name="ProgressBarEQ2" 
                            Width="0" Height="20" Fill="Green" 
                            Canvas.Left="100" Canvas.Top="40" Opacity="0.7"/>
-            <TextBlock Text="EQ2" FontWeight="Bold" FontSize="20" 
-                   Canvas.Left="130" Canvas.Top="50" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+            <TextBlock Text="EQP102_R1" FontWeight="Bold" FontSize="15" 
+                   Canvas.Left="110" Canvas.Top="50" HorizontalAlignment="Center" VerticalAlignment="Top"/>
             <Grid Canvas.Left="0" Canvas.Top="100">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -94,8 +94,8 @@
             <Rectangle x:Name="ProgressBarEQ3" 
                            Width="0" Height="20" Fill="Green" 
                            Canvas.Left="210" Canvas.Top="40" Opacity="0.7"/>
-            <TextBlock Text="EQ3" FontWeight="Bold" FontSize="20" 
-                Canvas.Left="240" Canvas.Top="50" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+            <TextBlock Text="EQP103_R1" FontWeight="Bold" FontSize="15" 
+                Canvas.Left="220" Canvas.Top="50" HorizontalAlignment="Center" VerticalAlignment="Top"/>
             <StackPanel Canvas.Left="210" Canvas.Top="100">
                 <TextBox Name="EQ3_Mode" Text="M" IsReadOnly="True" Width="100" Height="25" Margin="0,0,0,5"
              VerticalContentAlignment="Center" TextAlignment="Center"/>
@@ -121,8 +121,8 @@
             <Rectangle x:Name="ProgressBarEQ1" 
                            Width="0" Height="20" Fill="Green" 
                            Canvas.Left="320" Canvas.Top="40" Opacity="0.7"/>
-            <TextBlock Text="EQ1" FontWeight="Bold" FontSize="20" 
-                Canvas.Left="350" Canvas.Top="50" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+            <TextBlock Text="EQP101_R1" FontWeight="Bold" FontSize="15" 
+                Canvas.Left="330" Canvas.Top="50" HorizontalAlignment="Center" VerticalAlignment="Top"/>
             <StackPanel Canvas.Left="320" Canvas.Top="100">
                 <TextBox Name="EQ1_Mode" Text="M" IsReadOnly="True" Width="100" Height="25" Margin="0,0,0,5"
              VerticalContentAlignment="Center" TextAlignment="Center"/>

@@ -6,7 +6,7 @@ using System.Windows.Shapes;
 namespace Robot2 {
     public partial class MainWindow : Window {
         private MqttService? _mqttService;
-        private readonly string[] _robotName = ["EQ1", "EQ2", "EQ3"];
+        private readonly string[] _robotName = ["EQP101_R1", "EQP102_R1", "EQP103_R1"];
         private readonly Dictionary<string, Robot> _robotWorkers = [];
         private readonly Dictionary<string, RobotUIControls> _robotControls = [];
         public MainWindow() {
@@ -70,15 +70,15 @@ namespace Robot2 {
         }
 
         private async Task EQ2ModeButtonClicked() {
-            await ToggleRobotMode("EQ2");
+            await ToggleRobotMode("EQP102_R1");
         }
 
         private async Task EQ3ModeButtonClicked() {
-            await ToggleRobotMode("EQ3");
+            await ToggleRobotMode("EQP103_R1");
         }
 
         private async Task EQ1ModeButtonClicked() {
-            await ToggleRobotMode("EQ1");
+            await ToggleRobotMode("EQP101_R1");
         }
 
         private void ChangeModeContent(string id, RcpMode mode) {
@@ -154,7 +154,7 @@ namespace Robot2 {
 
         #region etc
         private async Task InitializeRobots() {
-            _robotControls.TryAdd("EQ1",
+            _robotControls.TryAdd("EQP101_R1",
                 new RobotUIControls {
                     ModeButton = EQ1_ModeButton,
                     ModeText = EQ1_Mode,
@@ -167,7 +167,7 @@ namespace Robot2 {
                     ProgressBar = ProgressBarEQ1
                 }
                 );
-            _robotControls.TryAdd("EQ2",
+            _robotControls.TryAdd("EQP102_R1",
                 new RobotUIControls {
                     ModeButton = EQ2_ModeButton,
                     ModeText = EQ2_Mode,
@@ -180,7 +180,7 @@ namespace Robot2 {
                     ProgressBar = ProgressBarEQ2
                 }
                 );
-            _robotControls.TryAdd("EQ3",
+            _robotControls.TryAdd("EQP103_R1",
                 new RobotUIControls {
                     ModeButton = EQ3_ModeButton,
                     ModeText = EQ3_Mode,
