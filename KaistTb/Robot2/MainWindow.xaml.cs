@@ -1,5 +1,6 @@
 ﻿using KaistRcp;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 
@@ -20,6 +21,9 @@ namespace Robot2 {
             EQ2_ModeButton.Click += async (sender, e) => await EQ2ModeButtonClicked();
             EQ3_ModeButton.Click += async (sender, e) => await EQ3ModeButtonClicked();
             EQ1_ModeButton.Click += async (sender, e) => await EQ1ModeButtonClicked();
+            EQ2_ProductResult.Click += async (sender, e) => await EQ2ProductResultChecked((sender as CheckBox)?.IsChecked ?? true);
+            EQ3_ProductResult.Click += async (sender, e) => await EQ3ProductResultChecked((sender as CheckBox)?.IsChecked ?? true);
+            EQ1_ProductResult.Click += async (sender, e) => await EQ1ProductResultChecked((sender as CheckBox)?.IsChecked ?? true);
         }
         #region mqtt
         private void InitializeMqtt() {
@@ -79,6 +83,21 @@ namespace Robot2 {
 
         private async Task EQ1ModeButtonClicked() {
             await ToggleRobotMode("EQP101_R1");
+        }
+
+        private async Task EQ2ProductResultChecked(bool isChecked)
+        {
+            await ToggleRobotProductResult("EQP102_R1", isChecked);
+        }
+
+        private async Task EQ3ProductResultChecked(bool isChecked)
+        {
+            await ToggleRobotProductResult("EQP103_R1", isChecked);
+        }
+
+        private async Task EQ1ProductResultChecked(bool isChecked)
+        {
+            await ToggleRobotProductResult("EQP101_R1", isChecked);
         }
 
         private void ChangeModeContent(string id, RcpMode mode) {
@@ -236,6 +255,11 @@ namespace Robot2 {
                 : new RcpAutoCommand();
 
             await robot.WriteChannel(command);
+        }
+
+        private async Task ToggleRobotProductResult(string robotId, bool setOk) {
+            var robot = _robotWorkers[robotId];
+            robot.ProductResultOk = setOk;
         }
 
         private void UpdateRobotUI(string id, Action<RobotUIControls> updateAction) {
