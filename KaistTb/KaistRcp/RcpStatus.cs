@@ -11,7 +11,8 @@ public record RcpStatus<TCustom>(
     string? CompletionReason,
     IReadOnlyList<int> ErrorCodes,
     string? JobId,
-    string? RecipeId
+    string? RecipeId,
+    string? ProductResult
     ) : IXcpStatus {
 
     public static string Identifier => Rcp.Identifier;
@@ -30,6 +31,7 @@ public record RcpStatus<TCustom>(
             && Util.EnumerableEquals(ErrorCodes, other.ErrorCodes)
             &&  EqualityComparer<string>.Default.Equals(JobId, other.JobId)
             &&  EqualityComparer<string>.Default.Equals(RecipeId, other.RecipeId)
+            &&  EqualityComparer<string>.Default.Equals(ProductResult, other.ProductResult)
             && CustomComparerMap.Equals(Custom, other.Custom);
     }
 
