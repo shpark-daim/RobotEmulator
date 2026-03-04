@@ -7,7 +7,7 @@ using System.Windows.Shapes;
 namespace Robot2 {
     public partial class MainWindow : Window {
         private MqttService? _mqttService;
-        private readonly string[] _robotName = ["EQP101_R1", "EQP102_R1", "EQP103_R1"];
+        private readonly string[] _robotName = ["EQ1", "EQ2", "EQ3"];
         private readonly Dictionary<string, Robot> _robotWorkers = [];
         private readonly Dictionary<string, RobotUIControls> _robotControls = [];
         public MainWindow() {
@@ -74,30 +74,30 @@ namespace Robot2 {
         }
 
         private async Task EQ2ModeButtonClicked() {
-            await ToggleRobotMode("EQP102_R1");
+            await ToggleRobotMode("EQ2");
         }
 
         private async Task EQ3ModeButtonClicked() {
-            await ToggleRobotMode("EQP103_R1");
+            await ToggleRobotMode("EQ3");
         }
 
         private async Task EQ1ModeButtonClicked() {
-            await ToggleRobotMode("EQP101_R1");
+            await ToggleRobotMode("EQ1");
         }
 
         private async Task EQ2ProductResultChecked(bool isChecked)
         {
-            await ToggleRobotProductResult("EQP102_R1", isChecked);
+            await ToggleRobotProductResult("EQ2", isChecked);
         }
 
         private async Task EQ3ProductResultChecked(bool isChecked)
         {
-            await ToggleRobotProductResult("EQP103_R1", isChecked);
+            await ToggleRobotProductResult("EQ3", isChecked);
         }
 
         private async Task EQ1ProductResultChecked(bool isChecked)
         {
-            await ToggleRobotProductResult("EQP101_R1", isChecked);
+            await ToggleRobotProductResult("EQ1", isChecked);
         }
 
         private void ChangeModeContent(string id, RcpMode mode) {
@@ -173,7 +173,7 @@ namespace Robot2 {
 
         #region etc
         private async Task InitializeRobots() {
-            _robotControls.TryAdd("EQP101_R1",
+            _robotControls.TryAdd("EQ1",
                 new RobotUIControls {
                     ModeButton = EQ1_ModeButton,
                     ModeText = EQ1_Mode,
@@ -186,7 +186,7 @@ namespace Robot2 {
                     ProgressBar = ProgressBarEQ1
                 }
                 );
-            _robotControls.TryAdd("EQP102_R1",
+            _robotControls.TryAdd("EQ2",
                 new RobotUIControls {
                     ModeButton = EQ2_ModeButton,
                     ModeText = EQ2_Mode,
@@ -199,7 +199,7 @@ namespace Robot2 {
                     ProgressBar = ProgressBarEQ2
                 }
                 );
-            _robotControls.TryAdd("EQP103_R1",
+            _robotControls.TryAdd("EQ3",
                 new RobotUIControls {
                     ModeButton = EQ3_ModeButton,
                     ModeText = EQ3_Mode,
