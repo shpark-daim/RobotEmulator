@@ -7,7 +7,7 @@ using System.Windows.Shapes;
 namespace Robot2 {
     public partial class MainWindow : Window {
         private MqttService? _mqttService;
-        private readonly string[] _robotName = ["EQ1", "EQ2", "EQ3"];
+        private readonly string[] _robotName = ["EQ1", "EQ2", "EQ3", "EQ4"];
         private readonly Dictionary<string, Robot> _robotWorkers = [];
         private readonly Dictionary<string, RobotUIControls> _robotControls = [];
         public MainWindow() {
@@ -21,9 +21,11 @@ namespace Robot2 {
             EQ2_ModeButton.Click += async (sender, e) => await EQ2ModeButtonClicked();
             EQ3_ModeButton.Click += async (sender, e) => await EQ3ModeButtonClicked();
             EQ1_ModeButton.Click += async (sender, e) => await EQ1ModeButtonClicked();
+            EQ4_ModeButton.Click += async (sender, e) => await EQ4ModeButtonClicked();
             EQ2_ProductResult.Click += async (sender, e) => await EQ2ProductResultChecked((sender as CheckBox)?.IsChecked ?? true);
             EQ3_ProductResult.Click += async (sender, e) => await EQ3ProductResultChecked((sender as CheckBox)?.IsChecked ?? true);
             EQ1_ProductResult.Click += async (sender, e) => await EQ1ProductResultChecked((sender as CheckBox)?.IsChecked ?? true);
+            EQ4_ProductResult.Click += async (sender, e) => await EQ4ProductResultChecked((sender as CheckBox)?.IsChecked ?? true);
         }
         #region mqtt
         private void InitializeMqtt() {
@@ -85,6 +87,11 @@ namespace Robot2 {
             await ToggleRobotMode("EQ1");
         }
 
+        private async Task EQ4ModeButtonClicked()
+        {
+            await ToggleRobotMode("EQ4");
+        }
+
         private async Task EQ2ProductResultChecked(bool isChecked)
         {
             await ToggleRobotProductResult("EQ2", isChecked);
@@ -98,6 +105,11 @@ namespace Robot2 {
         private async Task EQ1ProductResultChecked(bool isChecked)
         {
             await ToggleRobotProductResult("EQ1", isChecked);
+        }
+
+        private async Task EQ4ProductResultChecked(bool isChecked)
+        {
+            await ToggleRobotProductResult("EQ4", isChecked);
         }
 
         private void ChangeModeContent(string id, RcpMode mode) {
@@ -210,6 +222,20 @@ namespace Robot2 {
                     Sequence = EQ3_Seq,
                     EventSequence = EQ3_EventSeq,
                     ProgressBar = ProgressBarEQ3
+                }
+                );
+            _robotControls.TryAdd("EQ4",
+                new RobotUIControls
+                {
+                    ModeButton = EQ4_ModeButton,
+                    ModeText = EQ4_Mode,
+                    WorkingState = EQ4_WorkingState,
+                    CompletionReason = EQ4_CompletionReason,
+                    JobId = EQ4_JobId,
+                    RecipeId = EQ4_RecipeId,
+                    Sequence = EQ4_Seq,
+                    EventSequence = EQ4_EventSeq,
+                    ProgressBar = ProgressBarEQ4
                 }
                 );
 
