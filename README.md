@@ -6,4 +6,5 @@
 
 
 ##### tb.카이스트
-<img width="482" height="420" alt="image" src="https://github.com/user-attachments/assets/ba98cb14-bffa-4f99-b51a-6b1866175d41" />
+<img width="586" height="439" alt="image" src="https://github.com/user-attachments/assets/fa57e47d-f912-4eeb-b340-6980b900de9b" />
+
