@@ -29,5 +29,9 @@
                  VerticalContentAlignment="Center" TextAlignment="Center"/>
         <CheckBox x:Name="ProductResultCheckBox" IsChecked="True" Height="25" Margin="0,10,0,0"
                   HorizontalAlignment="Center" Click="ProductResult_Click"/>
+        <CheckBox x:Name="InfiniteCheck" Height="25" Margin="0,5,0,0"
+                  HorizontalAlignment="Center"/>
+        <Button x:Name="ForceCompleteButton" Content="Complete" Width="100" Height="25" Margin="0,5,0,0"
+                Click="ForceCompleteButton_Click" Background="#E0E0E0" BorderBrush="#BDBDBD"/>
     </StackPanel>
 </UserControl>

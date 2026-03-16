@@ -55,7 +55,12 @@ public partial class RobotPanel : UserControl {
         _storyboard.Children.Add(animation);
         Storyboard.SetTarget(animation, ProgressBarRect);
         Storyboard.SetTargetProperty(animation, new PropertyPath(Rectangle.WidthProperty));
-        _storyboard.Completed += (_, _) => AnimationCompleted?.Invoke(this, EventArgs.Empty);
+        _storyboard.Completed += (_, _) => {
+            if (InfiniteCheck.IsChecked == true)
+                _storyboard.Begin();
+            else
+                AnimationCompleted?.Invoke(this, EventArgs.Empty);
+        };
     }
 
     public void StartAnimation() => _storyboard?.Begin();
@@ -80,4 +85,9 @@ public partial class RobotPanel : UserControl {
 
     private void ProductResult_Click(object sender, RoutedEventArgs e)
         => ProductResultChanged?.Invoke(this, ProductResultCheckBox.IsChecked ?? true);
+
+    private void ForceCompleteButton_Click(object sender, RoutedEventArgs e) {
+        StopAnimation();
+        AnimationCompleted?.Invoke(this, EventArgs.Empty);
+    }
 }

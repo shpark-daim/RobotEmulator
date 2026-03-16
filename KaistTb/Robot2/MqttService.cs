@@ -13,6 +13,7 @@ namespace Robot2 {
         private readonly IMqttClient _mqttClient;
         private readonly MqttClientFactory _mqttFactory = new();
         public bool IsConnected => _mqttClient?.IsConnected ?? false;
+        private bool _intentionalDisconnect = false;
         public event EventHandler<bool>? ConnectionChanged;
         public event Action<string, RcpCommand>? CommandReceived;
 
@@ -40,6 +41,7 @@ namespace Robot2 {
         }
 
         public async Task DisconnectAsync() {
+            _intentionalDisconnect = true;
             await _mqttClient.UnsubscribeAsync(Rcp.MakeSubAllTargetAllCmdTopic());
             var disconnectOptions = _mqttFactory.CreateClientDisconnectOptionsBuilder().Build();
             await _mqttClient.DisconnectAsync(disconnectOptions);
@@ -74,6 +76,10 @@ namespace Robot2 {
         private async Task MqttClientDisConnected(MqttClientDisconnectedEventArgs e) {
             Console.WriteLine($"Mqtt disconneceted: {e.Reason}, {e.ReasonString}");
             ConnectionChanged?.Invoke(this, false);
+            if (_intentionalDisconnect) {
+                _intentionalDisconnect = false;
+                return;
+            }
             await Task.Delay(1000);
             await ConnectAsync();
         }
@@ -122,8 +128,7 @@ namespace Robot2 {
             Console.WriteLine($"MqttSend: {topic} {msg}");
         }
 
-        private static readonly JsonSerializerOptions s_jsonOptions = new()
-        {
+        private static readonly JsonSerializerOptions s_jsonOptions = new() {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             WriteIndented = false,
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
