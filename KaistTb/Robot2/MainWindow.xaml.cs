@@ -1,15 +1,13 @@
-﻿using KaistRcp;
+using KaistRcp;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Media.Animation;
-using System.Windows.Shapes;
 
 namespace Robot2 {
     public partial class MainWindow : Window {
         private MqttService? _mqttService;
         private readonly string[] _robotName = ["EQ1", "EQ2", "EQ3", "EQ4"];
         private readonly Dictionary<string, Robot> _robotWorkers = [];
-        private readonly Dictionary<string, RobotUIControls> _robotControls = [];
+        private readonly Dictionary<string, RobotPanel> _robotPanels = [];
+
         public MainWindow() {
             InitializeMqtt();
             InitializeComponent();
@@ -18,15 +16,8 @@ namespace Robot2 {
             ConnectButton.Click += async (sender, e) => await ConnectButton_Click(sender, e);
             AutoButton.Click += async (sender, e) => await AutoButtonClicked(sender, e);
             ManualButton.Click += async (sender, e) => await ManualButtonClicked(sender, e);
-            EQ2_ModeButton.Click += async (sender, e) => await EQ2ModeButtonClicked();
-            EQ3_ModeButton.Click += async (sender, e) => await EQ3ModeButtonClicked();
-            EQ1_ModeButton.Click += async (sender, e) => await EQ1ModeButtonClicked();
-            EQ4_ModeButton.Click += async (sender, e) => await EQ4ModeButtonClicked();
-            EQ2_ProductResult.Click += async (sender, e) => await EQ2ProductResultChecked((sender as CheckBox)?.IsChecked ?? true);
-            EQ3_ProductResult.Click += async (sender, e) => await EQ3ProductResultChecked((sender as CheckBox)?.IsChecked ?? true);
-            EQ1_ProductResult.Click += async (sender, e) => await EQ1ProductResultChecked((sender as CheckBox)?.IsChecked ?? true);
-            EQ4_ProductResult.Click += async (sender, e) => await EQ4ProductResultChecked((sender as CheckBox)?.IsChecked ?? true);
         }
+
         #region mqtt
         private void InitializeMqtt() {
             _mqttService = new MqttService("localhost", 1883);
@@ -37,20 +28,16 @@ namespace Robot2 {
                     ConnectButton.Content = isConnected ? "연결 해제" : "연결";
                 });
             };
-            _mqttService.CommandReceived += async (target, cmd) => {
-                await HandleCommands(target, cmd);
-            };
+            _mqttService.CommandReceived += async (target, cmd) => await HandleCommands(target, cmd);
         }
 
         private async Task ConnectButton_Click(object sender, RoutedEventArgs e) {
             try {
-                if (!_mqttService!.IsConnected) {
+                if (!_mqttService!.IsConnected)
                     await _mqttService.ConnectAsync();
-                } else {
+                else
                     await _mqttService.DisconnectAsync();
-                }
-            } catch (Exception) {
-            }
+            } catch (Exception) { }
         }
         #endregion mqtt
 
@@ -75,169 +62,66 @@ namespace Robot2 {
             }
         }
 
-        private async Task EQ2ModeButtonClicked() {
-            await ToggleRobotMode("EQ2");
+        private async void EQnModeButtonClicked(object sender, EventArgs e) {
+            if (sender is RobotPanel panel)
+                await ToggleRobotMode(panel.RobotName);
         }
 
-        private async Task EQ3ModeButtonClicked() {
-            await ToggleRobotMode("EQ3");
-        }
-
-        private async Task EQ1ModeButtonClicked() {
-            await ToggleRobotMode("EQ1");
-        }
-
-        private async Task EQ4ModeButtonClicked()
-        {
-            await ToggleRobotMode("EQ4");
-        }
-
-        private async Task EQ2ProductResultChecked(bool isChecked)
-        {
-            await ToggleRobotProductResult("EQ2", isChecked);
-        }
-
-        private async Task EQ3ProductResultChecked(bool isChecked)
-        {
-            await ToggleRobotProductResult("EQ3", isChecked);
-        }
-
-        private async Task EQ1ProductResultChecked(bool isChecked)
-        {
-            await ToggleRobotProductResult("EQ1", isChecked);
-        }
-
-        private async Task EQ4ProductResultChecked(bool isChecked)
-        {
-            await ToggleRobotProductResult("EQ4", isChecked);
+        private void EQnProductResultChanged(object sender, bool isChecked) {
+            if (sender is RobotPanel panel && _robotWorkers.TryGetValue(panel.RobotName, out var robot))
+                robot.ProductResultOk = isChecked;
         }
 
         private void ChangeModeContent(string id, RcpMode mode) {
-            var isAuto = mode == RcpMode.A;
-            UpdateRobotUI(id, controls => {
-                controls.ModeButton.Content = isAuto ? "M" : "A";
-                controls.ModeButton.Background = isAuto
-                    ? System.Windows.Media.Brushes.LightYellow
-                    : System.Windows.Media.Brushes.LightBlue;
-                controls.ModeButton.BorderBrush = isAuto
-                    ? System.Windows.Media.Brushes.Orange
-                    : System.Windows.Media.Brushes.SlateGray;
-                controls.ModeText.Text = mode.ToString();
+            Dispatcher.Invoke(() => {
+                var panel = _robotPanels[id];
+                panel.Mode = mode.ToString();
+                if (mode == RcpMode.A) panel.SetAutoMode();
+                else panel.SetManualMode();
             });
         }
 
         private void ChangeWorkingState(string id, RcpWorkingState workingState) {
-            UpdateRobotUI(id, controls => controls.WorkingState.Text = workingState.ToString());
-            if (_robotControls.TryGetValue(id, out var controls)) {
-                if (workingState == RcpWorkingState.P) PauseAnimation(id);
-                if (workingState == RcpWorkingState.M) ResumeAnimation(id);
-                if (workingState == RcpWorkingState.A) StopAnimation(id);
-            }
+            Dispatcher.Invoke(() => {
+                var panel = _robotPanels[id];
+                panel.WorkingState = workingState.ToString();
+                if (workingState == RcpWorkingState.P) panel.PauseAnimation();
+                if (workingState == RcpWorkingState.M) panel.ResumeAnimation();
+                if (workingState == RcpWorkingState.A) panel.StopAnimation();
+            });
         }
 
         private void ChangeCompletionReason(string id, string? completionReason) {
-            UpdateRobotUI(id, controls => controls.CompletionReason.Text = completionReason);
+            Dispatcher.Invoke(() => _robotPanels[id].CompletionReason = completionReason);
         }
 
         private void ChangeJobId(string id, string? jobId) {
-            UpdateRobotUI(id, controls => controls.JobId.Text = jobId);
+            Dispatcher.Invoke(() => _robotPanels[id].JobId = jobId);
         }
 
         private void ChangeRecipe(string id, string? recipeId) {
-            UpdateRobotUI(id, controls => controls.RecipeId.Text = recipeId);
-
-            if (_robotControls.TryGetValue(id, out var controls)) {
-                if (recipeId is null) {
-                    StopAnimation(id);
-                    //ResetFillAnimation(controls.ProgressBar);
-                } else {
-                    StartAnimation(id);
-                }
-            }
+            Dispatcher.Invoke(() => {
+                _robotPanels[id].RecipeId = recipeId;
+                if (recipeId is null) _robotPanels[id].StopAnimation();
+                else _robotPanels[id].StartAnimation();
+            });
         }
 
         private void ChangeSequence(string id, long sequence) {
-            UpdateRobotUI(id, controls => { controls.Sequence.Text = sequence.ToString(); });
+            Dispatcher.Invoke(() => _robotPanels[id].Sequence = sequence.ToString());
         }
 
         private void ChangeEventSequence(string id, long eventSeq) {
-            UpdateRobotUI(id, controls => { controls.EventSequence.Text = eventSeq.ToString(); });
+            Dispatcher.Invoke(() => _robotPanels[id].EventSequence = eventSeq.ToString());
         }
         #endregion handle buttons
 
-        #region animation
-        private void StartAnimation(string target) {
-            _robotControls[target].ProgressBarStoryboard!.Begin();
-        }
-
-        private void PauseAnimation(string target) {
-            _robotControls[target].ProgressBarStoryboard!.Pause();
-        }
-
-        private void ResumeAnimation(string target) {
-            _robotControls[target].ProgressBarStoryboard!.Resume();
-        }
-
-        private void StopAnimation(string target) {
-            _robotControls[target].ProgressBarStoryboard!.Stop();
-        }
-        #endregion animation
-
         #region etc
         private async Task InitializeRobots() {
-            _robotControls.TryAdd("EQ1",
-                new RobotUIControls {
-                    ModeButton = EQ1_ModeButton,
-                    ModeText = EQ1_Mode,
-                    WorkingState = EQ1_WorkingState,
-                    CompletionReason = EQ1_CompletionReason,
-                    JobId = EQ1_JobId,
-                    RecipeId = EQ1_RecipeId,
-                    Sequence = EQ1_Seq,
-                    EventSequence = EQ1_EventSeq,
-                    ProgressBar = ProgressBarEQ1
-                }
-                );
-            _robotControls.TryAdd("EQ2",
-                new RobotUIControls {
-                    ModeButton = EQ2_ModeButton,
-                    ModeText = EQ2_Mode,
-                    WorkingState = EQ2_WorkingState,
-                    CompletionReason = EQ2_CompletionReason,
-                    JobId = EQ2_JobId,
-                    RecipeId = EQ2_RecipeId,
-                    Sequence = EQ2_Seq,
-                    EventSequence = EQ2_EventSeq,
-                    ProgressBar = ProgressBarEQ2
-                }
-                );
-            _robotControls.TryAdd("EQ3",
-                new RobotUIControls {
-                    ModeButton = EQ3_ModeButton,
-                    ModeText = EQ3_Mode,
-                    WorkingState = EQ3_WorkingState,
-                    CompletionReason = EQ3_CompletionReason,
-                    JobId = EQ3_JobId,
-                    RecipeId = EQ3_RecipeId,
-                    Sequence = EQ3_Seq,
-                    EventSequence = EQ3_EventSeq,
-                    ProgressBar = ProgressBarEQ3
-                }
-                );
-            _robotControls.TryAdd("EQ4",
-                new RobotUIControls
-                {
-                    ModeButton = EQ4_ModeButton,
-                    ModeText = EQ4_Mode,
-                    WorkingState = EQ4_WorkingState,
-                    CompletionReason = EQ4_CompletionReason,
-                    JobId = EQ4_JobId,
-                    RecipeId = EQ4_RecipeId,
-                    Sequence = EQ4_Seq,
-                    EventSequence = EQ4_EventSeq,
-                    ProgressBar = ProgressBarEQ4
-                }
-                );
+            _robotPanels["EQ1"] = EQ1;
+            _robotPanels["EQ2"] = EQ2;
+            _robotPanels["EQ3"] = EQ3;
+            _robotPanels["EQ4"] = EQ4;
 
             foreach (var robot in _robotName) {
                 var robotWorker = new Robot(robot, _mqttService!);
@@ -251,27 +135,11 @@ namespace Robot2 {
                 _robotWorkers.Add(robot, robotWorker);
                 robotWorker.RunWorkerAsync();
 
-                CreateAnimationForProgressBar(_robotControls[robot].ProgressBar, robot);
+                _robotPanels[robot].AnimationCompleted += (_, _) => {
+                    using var _ = robotWorker.WriteChannel(new RcpCompletedCommand());
+                };
                 await robotWorker.WriteChannel(new RcpStatusCommand());
             }
-        }
-
-        private void CreateAnimationForProgressBar(Rectangle progressBar, string target) {
-            var animation = new DoubleAnimation {
-                From = 0,
-                To = 100,
-                Duration = TimeSpan.FromSeconds(30),
-                EasingFunction = new QuadraticEase()
-            };
-
-            var storyboard = new Storyboard();
-            storyboard.Children.Add(animation);
-            Storyboard.SetTarget(animation, progressBar);
-            Storyboard.SetTargetProperty(animation, new PropertyPath(Rectangle.WidthProperty));
-            storyboard.Completed += (s, e) => {
-                using var _ = _robotWorkers[target].WriteChannel(new RcpCompletedCommand());
-            };
-            _robotControls[target].ProgressBarStoryboard = storyboard;
         }
 
         private async Task ToggleRobotMode(string robotId) {
@@ -279,21 +147,8 @@ namespace Robot2 {
             RcpCommand command = robot.Mode == RcpMode.A
                 ? new RcpManualCommand()
                 : new RcpAutoCommand();
-
             await robot.WriteChannel(command);
         }
-
-        private async Task ToggleRobotProductResult(string robotId, bool setOk) {
-            var robot = _robotWorkers[robotId];
-            robot.ProductResultOk = setOk;
-        }
-
-        private void UpdateRobotUI(string id, Action<RobotUIControls> updateAction) {
-            if (!_robotControls.TryGetValue(id, out var controls)) return;
-
-            Dispatcher.Invoke(() => updateAction(controls));
-        }
-
         #endregion etc
     }
 }

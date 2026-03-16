@@ -91,6 +91,8 @@ public class Robot : BackgroundWorker {
                     case RcpStartCommand rcpCommand:
                         if (_status.Mode != RcpMode.A) break;
                         if (rcpCommand.RefSeq != _status.EventSeq) break;
+                        if (_status.JobId != null) break;
+                        if (_status.WorkingState != RcpWorkingState.I) break;
                         _status = _status with
                         {
                             EventSeq = _status.Sequence,
@@ -170,7 +172,7 @@ public class Robot : BackgroundWorker {
                         _status = _status with
                         {
                             EventSeq = _status.Sequence,
-                            WorkingState = RcpWorkingState.R,
+                            WorkingState = _status.JobId is { } ? RcpWorkingState.R : RcpWorkingState.I,
                             CompletionReason = null,
                         };
                         WorkingStateChanged?.Invoke(this, (Id, _status.WorkingState));

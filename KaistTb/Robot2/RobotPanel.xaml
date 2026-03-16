@@ -1,0 +1,33 @@
+<UserControl x:Class="Robot2.RobotPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="Root" Width="100">
+    <StackPanel>
+        <Button x:Name="ModeButton" Content="A" Width="100" Height="25"
+                Background="LightBlue" BorderBrush="SlateGray"
+                Click="ModeButton_Click"/>
+        <Grid Height="75">
+            <Rectangle Fill="LightGray"/>
+            <Rectangle x:Name="ProgressBarRect" Width="0" Height="20" Fill="Green" Opacity="0.7"
+                       VerticalAlignment="Center" HorizontalAlignment="Left"/>
+            <TextBlock Text="{Binding RobotName, ElementName=Root}" FontWeight="Bold" FontSize="13"
+                       VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,5"/>
+        </Grid>
+        <TextBox Text="{Binding Mode, ElementName=Root}" IsReadOnly="True" Height="25" Margin="0,0,0,5"
+                 VerticalContentAlignment="Center" TextAlignment="Center"/>
+        <TextBox Text="{Binding WorkingState, ElementName=Root}" IsReadOnly="True" Height="25" Margin="0,0,0,5"
+                 VerticalContentAlignment="Center" TextAlignment="Center"/>
+        <TextBox Text="{Binding CompletionReason, ElementName=Root}" IsReadOnly="True" Height="25" Margin="0,0,0,5"
+                 VerticalContentAlignment="Center" TextAlignment="Center"/>
+        <TextBox Text="{Binding JobId, ElementName=Root}" IsReadOnly="True" Height="25" Margin="0,0,0,5"
+                 VerticalContentAlignment="Center" TextAlignment="Center"/>
+        <TextBox Text="{Binding RecipeId, ElementName=Root}" IsReadOnly="True" Height="25" Margin="0,0,0,5"
+                 VerticalContentAlignment="Center" TextAlignment="Center"/>
+        <TextBox Text="{Binding Sequence, ElementName=Root}" IsReadOnly="True" Height="25" Margin="0,0,0,5"
+                 VerticalContentAlignment="Center" TextAlignment="Center"/>
+        <TextBox Text="{Binding EventSequence, ElementName=Root}" IsReadOnly="True" Height="25" Margin="0,0,0,5"
+                 VerticalContentAlignment="Center" TextAlignment="Center"/>
+        <CheckBox x:Name="ProductResultCheckBox" IsChecked="True" Height="25" Margin="0,10,0,0"
+                  HorizontalAlignment="Center" Click="ProductResult_Click"/>
+    </StackPanel>
+</UserControl>
