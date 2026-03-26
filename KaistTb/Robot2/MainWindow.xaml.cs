@@ -4,7 +4,7 @@ using System.Windows;
 namespace Robot2 {
     public partial class MainWindow : Window {
         private MqttService? _mqttService;
-        private readonly string[] _robotName = ["EQ1", "EQ2", "EQ3", "EQ4"];
+        private readonly string[] _robotName = ["EQ1", "EQ2", "EQ3", "EQ4", "H1"];
         private readonly Dictionary<string, Robot> _robotWorkers = [];
         private readonly Dictionary<string, RobotPanel> _robotPanels = [];
 
@@ -122,6 +122,7 @@ namespace Robot2 {
             _robotPanels["EQ2"] = EQ2;
             _robotPanels["EQ3"] = EQ3;
             _robotPanels["EQ4"] = EQ4;
+            _robotPanels["H1"] = H1;
 
             foreach (var robot in _robotName) {
                 var robotWorker = new Robot(robot, _mqttService!);
