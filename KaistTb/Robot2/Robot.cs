@@ -123,6 +123,20 @@ public class Robot : BackgroundWorker {
                         SequenceChanged?.Invoke(this, (Id, _status.Sequence));
                         EventSequenceChanged?.Invoke(this, (Id, _status.EventSeq));
                         await SendStatus();
+
+                        await Task.Delay(1000, ct);
+
+                        _status = _status with
+                        {
+                            EventSeq = _status.Sequence,
+                            WorkingState = RcpWorkingState.C,
+                            CompletionReason = "Stopped",
+                        };
+                        WorkingStateChanged?.Invoke(this, (Id, _status.WorkingState));
+                        CompletionReasonChanged?.Invoke(this, (Id, _status.CompletionReason));
+                        SequenceChanged?.Invoke(this, (Id, _status.Sequence));
+                        EventSequenceChanged?.Invoke(this, (Id, _status.EventSeq));
+                        await SendStatus();
                         break;
                     case RcpPauseCommand rcpCommand:
                         if (_status.Mode != RcpMode.A) break;

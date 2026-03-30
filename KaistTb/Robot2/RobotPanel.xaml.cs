@@ -38,6 +38,7 @@ public partial class RobotPanel : UserControl {
     public event EventHandler? AnimationCompleted;
 
     private Storyboard? _storyboard;
+    private bool _animationRunning;
 
     public RobotPanel() {
         InitializeComponent();
@@ -56,17 +57,17 @@ public partial class RobotPanel : UserControl {
         Storyboard.SetTarget(animation, ProgressBarRect);
         Storyboard.SetTargetProperty(animation, new PropertyPath(Rectangle.WidthProperty));
         _storyboard.Completed += (_, _) => {
-            if (InfiniteCheck.IsChecked == true)
+            if (InfiniteCheck.IsChecked == true && _animationRunning)
                 _storyboard.Begin();
             else
                 AnimationCompleted?.Invoke(this, EventArgs.Empty);
         };
     }
 
-    public void StartAnimation() => _storyboard?.Begin();
+    public void StartAnimation() { _animationRunning = true; _storyboard?.Begin(); }
     public void PauseAnimation() => _storyboard?.Pause();
     public void ResumeAnimation() => _storyboard?.Resume();
-    public void StopAnimation() => _storyboard?.Stop();
+    public void StopAnimation() { _animationRunning = false; _storyboard?.Stop(); }
 
     public void SetAutoMode() {
         ModeButton.Content = "M";

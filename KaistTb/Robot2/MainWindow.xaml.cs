@@ -87,6 +87,7 @@ namespace Robot2 {
                 panel.WorkingState = workingState.ToString();
                 if (workingState == RcpWorkingState.P) panel.PauseAnimation();
                 if (workingState == RcpWorkingState.M) panel.ResumeAnimation();
+                if (workingState == RcpWorkingState.S) panel.StopAnimation();
                 if (workingState == RcpWorkingState.A) panel.StopAnimation();
             });
         }
